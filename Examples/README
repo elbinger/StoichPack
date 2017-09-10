@@ -1,0 +1,6 @@
+If you use Linux and have g++ installed: execute make
+Otherwise: configure Makefile.inc, then execute make
+
+Files:
+The example in this folder uses Eigen (http://eigen.tuxfamily.org) for linear algebra. The Makefile will extract the source files.
+The file StoichPackEigen demonstrates how to make StoichPack use the linear algebra functions of eigen.
