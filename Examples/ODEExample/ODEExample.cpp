@@ -59,16 +59,22 @@ IKineticStoichiometry<EXT>* Preprocessing(IKineticStoichiometry<EXT>* S){
 	else return S;
 }
 
+EXT::VectorType GetInitial(const IKineticStoichiometry<EXT>& S){
+	if(ODEConstants::example=="Example1" || ODEConstants::example=="Example2"){
+		EXT::VectorType c(3);
+		c<<1,0,0;
+		return c;
+	} else throw "Unknown example";
+}
 int main(){
 	ODEConstants::print();
 	IKineticStoichiometry<EXT>* S = LoadStoichiometry(ODEConstants::example);
 	S=Preprocessing(S);
-	EXT::VectorType c0(3);
-	c0<<1, 0, 0;
-	cout<<endl<<"c0="<<endl<<c0<<endl<<endl;
+	EXT::VectorType c0 =GetInitial(*S);
+	cout<<endl<<"c(0)="<<endl<<c0<<endl<<endl;
 	EXT::VectorType c1 = SolveProblem(*S,c0);
 
-	cout<<endl<<"c1 = "<<endl<<c1<<endl;
+	cout<<endl<<"c("<<ODEConstants::T<<") = "<<endl<<c1<<endl;
 
 	delete S;
 

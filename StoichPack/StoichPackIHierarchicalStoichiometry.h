@@ -102,12 +102,12 @@ public:
 	}
 	VectorArrayType ToBaseMobile(const VectorArrayType& mobile) const {
 		VectorArrayType ret=EXT::ReserveVectorArray(Base().Stages());
-		ToBaseImpl(mobile,ret);
+		ToBaseMobileImpl(mobile,ret);
 		return ret;
 	}
 	VectorArrayType ToBaseImmobile(const VectorArrayType& immobile) const {
 		VectorArrayType ret=EXT::ReserveVectorArray(Base().Stages());
-		ToBaseImpl(immobile,ret);
+		ToBaseImmobileImpl(immobile,ret);
 		return ret;
 	}
 

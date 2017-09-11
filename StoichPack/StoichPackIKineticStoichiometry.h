@@ -157,11 +157,11 @@ namespace StoichPack{
 		ToOriginalImmobileImpl(immobile,ret);
 		return ret;
 	}
-	VectorPairType FromOriginal(const VectorArrayType& mobile, const VectorArrayType& immobile) const {
+	VectorPairType ToOriginal(const VectorArrayType& mobile, const VectorArrayType& immobile) const {
 		return VectorPairType(ToOriginalMobile(mobile),ToOriginalImmobile(immobile));
 	}
-	VectorPairType FromOriginal(const VectorArrayPairType& all) const {
-		return VectorPairType(ToOriginalMobile(all.Mobile()),ToOriginalImmobile(all.Immobile()));
+	VectorPairType ToOriginal(const VectorArrayPairType& all) const {
+		return ToOriginal(all.Mobile(),all.Immobile());
 	}
 
 	virtual VectorType ReactionRatesImpl1(const VectorType& all, size_t stage) const =0;
@@ -257,12 +257,12 @@ namespace StoichPack{
 
 	VectorType MobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		const VectorPairType orig = ToOriginal(mobile,immobile);
-		return stoich_mobile[stage]*ReactionRatesImpl2(orig,stage).Mobile()+ConstMobileSpeciesRatesImpl(orig,stage);
+		return stoich_mobile[stage]*ReactionRatesImpl2(orig,stage)+ConstMobileSpeciesRatesImpl(orig,stage);
 	}
 
 	VectorType ImmobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		const VectorPairType orig = ToOriginal(mobile,immobile);
-		return stoich_immobile[stage]*ReactionRatesImpl2(orig,stage).Immobile()+ConstImmobileSpeciesRatesImpl(orig,stage);
+		return stoich_immobile[stage]*ReactionRatesImpl2(orig,stage)+ConstImmobileSpeciesRatesImpl(orig,stage);
 	}
 
 	MatrixType DiffSpeciesRates(const VectorArrayType& all, size_t stage) const {

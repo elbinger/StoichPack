@@ -213,13 +213,13 @@ public:
 	VectorType ConstMobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
 		const size_t substage = this->SubStage(stage);
 		const VectorType tmp1 = Base().ConstMobileSpeciesRatesImpl(all,substage);
-		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,subreactions[stage],substage);
+		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,const_subreactions[stage],substage);
 		return stoich_const_mobile[stage]*tmp2 + this->fromBaseMobile(stage)*tmp1;
 	}
 	VectorType ConstImmobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
 		const size_t substage = this->SubStage(stage);
 		const VectorType tmp1 = Base().ConstImmobileSpeciesRatesImpl(all,substage);
-		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,subreactions[stage],substage);
+		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,const_subreactions[stage],substage);
 		return stoich_const_immobile[stage]*tmp2 + this->fromBaseImmobile(stage)*tmp1;
 	}
 
