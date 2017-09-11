@@ -7,4 +7,4 @@ default:
 clean:
 	cd Examples; $(MAKE) clean
 	cd StoichPack; $(MAKE) clean
-	rm -f *~ *.a *.o *.so
+	rm -f *~
