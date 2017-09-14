@@ -1,10 +1,12 @@
 #include "MyStoichiometries.h"
 #include "ODEConstants.h"
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
-bool SolveStage(const IKineticStoichiometry<EXT>& S, const EXT::VectorArrayType& cold_all, EXT::VectorArrayType& c_all, size_t stage){
+template<typename T>
+bool SolveStage(const T& S, const EXT::VectorArrayType& cold_all, EXT::VectorArrayType& c_all, size_t stage){
 	assert(stage<S.Stages());
 
 	cout<<"| | Stage "<<stage<<endl;
@@ -40,7 +42,8 @@ bool SolveStage(const IKineticStoichiometry<EXT>& S, const EXT::VectorArrayType&
 	}
 }
 
-EXT::VectorType SolveProblem(const IKineticStoichiometry<EXT>& S, const EXT::VectorType& c0){
+template<typename T>
+EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
 	EXT::VectorArrayType c = S.FromOriginal(c0);
 	EXT::VectorArrayType cold = c;
 	for(double t = 0;t<=ODEConstants::T;){
@@ -54,29 +57,50 @@ EXT::VectorType SolveProblem(const IKineticStoichiometry<EXT>& S, const EXT::Vec
 	return S.ToOriginal(c);
 }
 
-IKineticStoichiometry<EXT>* Preprocessing(IKineticStoichiometry<EXT>* S){
-	if(ODEConstants::preprocessing == "onesided") return new OneSidedStoichiometry<EXT>(S);
-	else return S;
-}
-
-EXT::VectorType GetInitial(const IKineticStoichiometry<EXT>& S){
+EXT::VectorType GetInitial(const BasicKineticStoichiometry<EXT>& S){
 	if(ODEConstants::example=="Example1" || ODEConstants::example=="Example2"){
 		EXT::VectorType c(3);
 		c<<1,0,0;
 		return c;
+	} else if(ODEConstants::example=="Example3"){
+		const std::vector<Species>& x = S.Participants();
+		EXT::VectorType c(x.size());
+		for(size_t i=0;i<x.size();++i) {
+			std::string n=x[i].Name().substr(0,1);
+			if(n=="A") c[i]=1;
+			else if(n=="C") c[i]=0.5;
+			else c[i]=0;
+		}
+		return c;
 	} else throw "Unknown example";
 }
+		
 int main(){
 	ODEConstants::print();
-	IKineticStoichiometry<EXT>* S = LoadStoichiometry(ODEConstants::example);
-	S=Preprocessing(S);
-	EXT::VectorType c0 =GetInitial(*S);
-	cout<<endl<<"c(0)="<<endl<<c0<<endl<<endl;
-	EXT::VectorType c1 = SolveProblem(*S,c0);
+	BasicKineticStoichiometry<EXT>* S = LoadStoichiometry(ODEConstants::example);
+	EXT::VectorType c =GetInitial(*S);
+	cout<<endl<<"c(0)="<<endl<<c<<endl<<endl;
+	if(!ODEConstants::virtual_interface){
+		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED){
+			OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> >* tmp=new OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> >(S);
+			c=SolveProblem(*tmp,c);
+			delete tmp;
+		} else {
+			c=SolveProblem(*S,c);
+			delete S;
+		}
+	} else {
+		IKineticStoichiometry<EXT>* tmp;
+		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED) tmp=new OneSidedStoichiometry<EXT>(S);
+		else tmp=S;
+		c=SolveProblem(*tmp,c);
+		delete tmp;
+	}
 
-	cout<<endl<<"c("<<ODEConstants::T<<") = "<<endl<<c1<<endl;
-
-	delete S;
-
+	cout<<endl<<"c("<<ODEConstants::T<<") = "<<endl<<c<<endl;
+	ofstream os(ODEConstants::FileName().c_str());
+	assert(os.is_open());
+	os<<c;
+	os.close();
 	return 0;
 }

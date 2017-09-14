@@ -5,7 +5,9 @@ include ../Makefile.inc
 LIBDIR = ../MyStoichiometries
 LIB = MyStoichiometries
 
-default: $(LIBDIR)/lib$(LIB).a ODEExample.o ODEConstants.o
+default: ODEExample
+
+ODEExample: $(LIBDIR)/lib$(LIB).a ODEExample.o ODEConstants.o
 	$(CC) $(DEFAULT_CC_FLAGS) -L$(LIBDIR) -o ODEExample ODEExample.o ODEConstants.o -l$(LIB) $(DEFAULT_LINK)
 
 ODEExample.o: ODEExample.cpp ODEConstants.h Makefile ../Makefile.inc ../StoichPackEigen.h $(STOICHPACK)/*.h
@@ -15,4 +17,4 @@ ODEConstants.o: ODEConstants.h ODEConstants.cpp
 	$(CC) $(DEFAULT_CC_FLAGS) -c ODEConstants.cpp
 
 clean:
-	rm -f *.o *~ ODEExample
+	rm -f *.o *~ out_* ODEExample

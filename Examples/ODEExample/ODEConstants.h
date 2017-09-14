@@ -6,6 +6,7 @@
 
 using namespace StoichPack;
 
+enum PreprocessingType { NONE , ONESIDED };
 class ODEConstants{
 private:
 	
@@ -17,9 +18,12 @@ public:
 	static const sp_scalar dt;
 
 	static const std::string example;
-	static const std::string preprocessing;
+
+	static const PreprocessingType preprocessing;
+	static const bool virtual_interface;
 
 	static void print() ;
+	static std::string FileName();
 };
 
 #endif

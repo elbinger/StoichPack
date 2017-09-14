@@ -28,8 +28,8 @@ public:
 	const typename EEXT::MatrixType& ToBase() const { return toBase; }
 };
 	
-template<typename EXT, template <typename> class BT = IKineticStoichiometry >
-class OneSidedStoichiometry : public IHierarchicalLinearStoichiometry<EXT,BT<EXT> > {
+template<typename EXT, class BT = IKineticStoichiometry<EXT> >
+class OneSidedStoichiometry : public IHierarchicalLinearStoichiometry<EXT,BT > {
  	typedef typename EXT::VectorType VectorType;
 	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
@@ -48,7 +48,7 @@ class OneSidedStoichiometry : public IHierarchicalLinearStoichiometry<EXT,BT<EXT
 	}
 
 private:
-	using IHierarchicalLinearStoichiometry<EXT,BT<EXT> >::Base;
+	using IHierarchicalLinearStoichiometry<EXT,BT >::Base;
 
 	std::vector<IndexType> subreactions, const_subreactions;
 	std::vector<MatrixType> stoich_const, stoich_const_mobile, stoich_const_immobile;
@@ -153,7 +153,7 @@ private:
 		const_subreactions.push_back(constreactions);
 
 		Rearangement<EXT> rvar(varreactions,n_r);
-		IHierarchicalLinearStoichiometry<EXT,BT<EXT> >::AddStage(R.FromBase()*Base().StoichiometricMatrices()[substage]*rvar.ToBase(),substage,true,subspecies_mobile.ToBase(),subspecies_immobile.ToBase(),subspecies_mobile.FromBase(),subspecies_immobile.FromBase());
+		IHierarchicalLinearStoichiometry<EXT,BT >::AddStage(R.FromBase()*Base().StoichiometricMatrices()[substage]*rvar.ToBase(),substage,true,subspecies_mobile.ToBase(),subspecies_immobile.ToBase(),subspecies_mobile.FromBase(),subspecies_immobile.FromBase());
 
 		Rearangement<EXT> rconst(constreactions,n_r);
 		const MatrixType& M=rconst.ToBase();
@@ -163,7 +163,7 @@ private:
 	}
 
 public:
-	OneSidedStoichiometry(const BT<EXT>* bt) : IHierarchicalLinearStoichiometry<EXT,BT<EXT> >(bt) {
+	OneSidedStoichiometry(const BT* bt) : IHierarchicalLinearStoichiometry<EXT,BT >(bt) {
 		for(size_t i=0;i<bt->Stages();++i) ProcessSubstage(i);
 		this->Finish();
 	}
