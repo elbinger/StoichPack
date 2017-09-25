@@ -2,8 +2,27 @@
 #define __H_STOICHPACK_HIERARCHICAL_STOICHIOMETRY__
 
 #include "StoichPackIKineticStoichiometry.h"
+#include <memory>
 
 namespace StoichPack{
+
+template<typename EXT, typename BT>
+class BaseStorage{
+	private:
+	const BT storage;
+	public:
+	BaseStorage(const BT& x) : storage(x) {}
+	const BT& get() const { return storage; }
+};
+
+template<typename EXT>
+class BaseStorage<EXT,IKineticStoichiometry<EXT> >{
+	private:
+	const std::shared_ptr<IKineticStoichiometry<EXT> > storage;
+	public:
+	BaseStorage(const IKineticStoichiometry<EXT>& x) : storage(x.copy()) {}
+	const IKineticStoichiometry<EXT>& get() const { return *storage; }
+};
 
 template<typename EXT, typename BT = IKineticStoichiometry<EXT> >
 class IHierarchicalStoichiometry : public IKineticStoichiometry<EXT>{
@@ -14,10 +33,10 @@ class IHierarchicalStoichiometry : public IKineticStoichiometry<EXT>{
 	typedef typename EXT::MatrixType MatrixType;
 private:
 	std::vector<size_t> substages, substages_first;
-	const BT* base;
+	const BaseStorage<EXT,BT> base;
 
 	void UpdateSubStages(size_t subs) {
-		assert(subs<base->Stages());
+		assert(subs<Base().Stages());
 		if(substages.size()==0){
 			assert(subs==0);
 			substages_first.push_back(0);
@@ -31,7 +50,7 @@ private:
 	//FORBID
 	IHierarchicalStoichiometry();
 protected:
-	IHierarchicalStoichiometry(const BT* bt) : base(bt) {}
+	IHierarchicalStoichiometry(const BT& bt) : base(bt) {}
 
 	void Finish() {
 		assert(substages_first.size()==Base().Stages());
@@ -50,7 +69,7 @@ protected:
 
 	size_t SubStage(size_t i) const { assert(i<Stages()); return substages[i]; }
 	size_t SubStageFirst(size_t i) const { assert(i<substages_first.size()); return substages_first[i]; }
-	const BT& Base() const { return *base; }
+	const BT& Base() const { return base.get(); }
 
 public:
 	using IKineticStoichiometry<EXT>::Stages;
@@ -137,14 +156,14 @@ public:
 	virtual MatrixType ImmobileBaseTransformation() const =0;
 	virtual MatrixType BaseTransformation() const =0;
 	
-	MatrixType MobileTransformation() const { return base->MobileTransformation()*MobileBaseTransformation(); }
-	MatrixType ImmobileTransformation() const { return base->ImmobileTransformation()*ImmobileBaseTransformation(); }
-	MatrixType Transformation() const { return base->Transformation()*BaseTransformation(); }
+	MatrixType MobileTransformation() const { return Base().MobileTransformation()*MobileBaseTransformation(); }
+	MatrixType ImmobileTransformation() const { return Base().ImmobileTransformation()*ImmobileBaseTransformation(); }
+	MatrixType Transformation() const { return Base().Transformation()*BaseTransformation(); }
 
 
-	const std::vector<Species>& Participants() const { return base->Participants(); }
+	const std::vector<Species>& Participants() const { return Base().Participants(); }
 
-	virtual ~IHierarchicalStoichiometry() { delete base; }
+	virtual ~IHierarchicalStoichiometry() {}
 };
 }
 

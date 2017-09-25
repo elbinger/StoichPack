@@ -3,6 +3,6 @@
 
 #include "StoichPackEigen.h"
 
-BasicKineticStoichiometry<EXT>* LoadStoichiometry(const std::string& name);
+BasicKineticStoichiometry<EXT> LoadStoichiometry(const std::string& name);
 
 #endif

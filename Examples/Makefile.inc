@@ -7,7 +7,7 @@ EIGEN = ../eigen/Eigen
 DEFAULT_INCLUDE = -I$(STOICHPACK) -I$(EIGEN) -I..
 
 DEFAULT_STD_FLAGS = -ansi -pedantic -Wall -Werror -std=c++0x
-#remove -Werror if you compile without -std=c++0x (C++11)
+
 DEFAULT_DEGUG_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer
 DEFAULT_OPTIMIZE_FLAGS = -O3 -DNDEBUG
 

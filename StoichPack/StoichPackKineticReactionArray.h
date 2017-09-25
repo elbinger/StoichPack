@@ -2,43 +2,54 @@
 #define __H_STOICPACK_KINETICREACTION_ARRAY__
 
 #include "StoichPackIKineticReaction.h"
+#include <memory>
 
 namespace StoichPack{
 
 template<typename ReactionType = IKineticReaction>
 class KineticReactionArray{
 	typedef ReactionType* RPTR;
+	typedef std::shared_ptr<ReactionType> SHARED_RPTR;
 	typedef const ReactionType& RREF;
 private:
-	std::vector<RPTR> reactions;
+	std::vector<SHARED_RPTR> reactions;
 	std::vector<Species> species;
 	size_t mobile, immobile;
 	bool initialized;
 
-	//FORBID
-	KineticReactionArray(const KineticReactionArray&);
-	KineticReactionArray& operator=(const KineticReactionArray&);
+	void set(const KineticReactionArray& other){
+		if(!other.Initialized()){
+			throw StoichPackException("Cannot copy uninitalized KineticReactionArray!");
+		}
+		if(Initialized()) throw StoichPackException("Cannot overwrite initalized KineticReactionArray");
+		reactions=other.reactions;
+		species=other.species;
+		mobile=other.mobile;
+		immobile=other.immobile;
+		initialized=other.initialized;
+	}
+
 
 public:
 	KineticReactionArray() : mobile(0), immobile(0), initialized(false) {}
+	KineticReactionArray(const KineticReactionArray& other) : initialized(false) { set(other); }
+	KineticReactionArray<ReactionType>& operator=(const KineticReactionArray& other) { set(other); }
 
 	void AddSpecies(const std::string& name, species_type type){
-		if(initialized) throw StoichPackException("Already initialized!");
+		if(Initialized()) throw StoichPackException("Already initialized!");
+		if(type==species_type::unknown) throw StoichPackException("Cannot add species with unknown type!");
 
 		Species s(name,type);
-		if(s.Initialized()) throw StoichPackException("Cannot add initialized species "+s.Name());
 		std::vector<Species>::iterator it=std::find(species.begin(),species.end(),s);
 		if(it!=species.end()){
 			if(it->Type()!=s.Type())
 				throw StoichPackException("Species "+s.Name()+" already contained with different type!");
-		}
-		species.push_back(s);
+		} else species.push_back(s);
 	}
 
 	void AddReaction(RPTR r){
-		if(initialized) throw StoichPackException("Already initialized!");
-		if(r->Initialized()) throw StoichPackException("Cannot add initialized "+r->Name()+" reaction!");
-		reactions.push_back(r);
+		if(Initialized()) throw StoichPackException("Already initialized!");
+		reactions.push_back(SHARED_RPTR(r));
 	}
 
 	void Initialize() {	
@@ -73,7 +84,7 @@ public:
 
 		for(size_t i=0;i<species.size();++i) species[i].Initialize(i,mobile,immobile);
 
-		for(typename std::vector<RPTR>::iterator it=reactions.begin();it!=reactions.end();){
+		for(typename std::vector<SHARED_RPTR>::iterator it=reactions.begin();it!=reactions.end();){
 			(*it)->Initialize(species);
 			/*if(it->AllConst()) it=erase(it);
 			else*/ ++it;
@@ -86,13 +97,7 @@ public:
 	size_t ImmobileSpecies() const { return immobile; }
 
 	const std::vector<Species>& Participants() const { return species; }
-	const std::vector<RPTR>& Reactions() const { return reactions; }
-
-	~KineticReactionArray(){
-		for(size_t i=0;i<reactions.size();++i) {
-			delete reactions[i];
-		}
-	}
+	const std::vector<SHARED_RPTR>& Reactions() const { return reactions; }
  };
 	
 } //namespace

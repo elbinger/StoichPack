@@ -18,37 +18,32 @@ namespace StoichPack{
 	Species(); //FORBID
 
  public:
-	explicit Species(const std::string& n) : name(n), type(species_type::unknown), pos_global(-1), pos_type(-1) {
+	Species(const Species& other) : name(other.name), type(other.type), pos_global(other.pos_global), pos_type(other.pos_type) {}
+	Species(const std::string& n, species_type t=species_type::unknown) {
 		if(n=="") throw StoichPackException("Name must not be empty!");
-	}
-	Species(const std::string& n, species_type t) : name(n), type(t), pos_global(-1), pos_type(-1){
-		if(n=="") throw StoichPackException("Name must not be empty!");
-		if(t==species_type::unknown) throw StoichPackException("Type must not be unknown!");
-	}
-	
-	bool Initialized() const {
-		return pos_global!=size_t(-1);
+		name=n;
+		type=t;
 	}
 
-	const std::string& Name() const { return name; }
-	species_type Type() const { assert(type!=species_type::unknown); return type; }
-	size_t GlobalPos() const { assert(Initialized()); return pos_global; }
-	size_t TypePos() const { assert(Initialized()); return pos_type; }
-	
-	void Update(const Species& other) {
-		if(Initialized()) throw StoichPackException("Initialized species must not be changed!");
-		if(name!=other.name) throw StoichPackException("Cannot use operator= for species "+name+" and "+other.name);
+	void Update(const Species& other){
+		if(Name()!=other.Name()) throw StoichPackException("Cannot update from different species!");
+		if(Type()!=species_type::unknown) throw StoichPackException("Species already updated!");
+		if(other.Type()==species_type::unknown) throw StoichPackException("Cannot update from species with unknown type!");
 
-		type=other.type;
+		type=other.Type();
 		pos_global=other.pos_global;
 		pos_type=other.pos_type;
 	}
-
+	
+	const std::string& Name() const { return name; }
+	species_type Type() const { return type; }
+	size_t GlobalPos() const { return pos_global; }
+	size_t TypePos() const { return pos_type; }
+	
 	bool operator == (const Species& other) const { return name==other.name; }
 
 	void Initialize(size_t pos, size_t n_mobile, size_t n_immobile){
-		if(Initialized()) throw StoichPackException("Species "+name+" already initialized!");
-		if(type == species_type::unknown) throw StoichPackException("Cannot initialize species "+name+" with unknown type!");
+		if(Type()==species_type::unknown) throw StoichPackException("Cannot initialize species with unknown type!");
 
 		if(type == species_type::mobile){
 			if(pos>=n_mobile) throw StoichPackException("Invalid type for desired position!");
@@ -68,11 +63,13 @@ namespace StoichPack{
 
 	template<typename ITV>
 	sp_scalar GetValue(ITV v) const {
+		assert(Type()!=species_type::unknown);
 		return *(v+pos_global);
 	}
 
 	template<typename ITM, typename ITIMM>
 	sp_scalar GetValue(ITM m, ITIMM imm) const{
+		assert(Type()!=species_type::unknown);
 		if(type==species_type::immobile) return *(imm+pos_type);
 		return *(m+pos_type);
 	}

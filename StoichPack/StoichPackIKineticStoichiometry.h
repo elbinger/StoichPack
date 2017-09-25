@@ -21,9 +21,7 @@ namespace StoichPack{
 	size_t mobile_species, immobile_species;
 	std::vector<bool> correction;
 
-	//FORBID
-	IKineticStoichiometry(const IKineticStoichiometry<EXT>&);
-	IKineticStoichiometry& operator=(const IKineticStoichiometry<EXT>&);
+	IKineticStoichiometry& operator=(const IKineticStoichiometry<EXT>&);	//FORBID
 
  protected:
 	void AddStage(const MatrixType& stoich, size_t n_mobile, bool correct){
@@ -193,6 +191,8 @@ namespace StoichPack{
 	virtual MatrixType ImmobileTransformation() const =0;
 	virtual MatrixType Transformation() const =0;
 
+	virtual IKineticStoichiometry<EXT>* copy() const =0;
+
 	VectorType ReactionRates(const VectorArrayType& all, size_t stage) const {
 		return ReactionRatesImpl1(ToOriginal(all),stage);
 	}
@@ -325,7 +325,6 @@ namespace StoichPack{
 	}
 
 	bool CorrectionAllowed(size_t stage) const { return correction[stage]; }
-
 	//dtor
 	virtual ~IKineticStoichiometry(){}	
  };

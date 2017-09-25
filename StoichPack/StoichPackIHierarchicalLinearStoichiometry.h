@@ -44,7 +44,7 @@ protected:
 	using IHierarchicalStoichiometry<EXT,BT>::SubStageFirst;
 	using IHierarchicalStoichiometry<EXT,BT>::Base;
 
-	IHierarchicalLinearStoichiometry(const BT* oth) : IHierarchicalStoichiometry<EXT,BT>(oth) {}
+	IHierarchicalLinearStoichiometry(const BT& oth) : IHierarchicalStoichiometry<EXT,BT>(oth) {}
 	void AddStage(const MatrixType& stoich, size_t substage, bool correction, const MatrixType& toBasemobile, const MatrixType& toBaseimmobile, const MatrixType& fromBasemobile, const MatrixType& fromBaseimmobile){
 		const size_t basemobile=EXT::rows(toBasemobile);
 		const size_t baseimmobile=EXT::rows(toBaseimmobile);
@@ -102,6 +102,7 @@ public:
 	MatrixType ImmobileBaseTransformation() const { return EXT::CreateMatrix(1,1); }
 	MatrixType BaseTransformation() const { return EXT::CreateMatrix(1,1); }
 
+	virtual ~IHierarchicalLinearStoichiometry() {}
 };
 	
 }

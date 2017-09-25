@@ -163,8 +163,8 @@ private:
 	}
 
 public:
-	OneSidedStoichiometry(const BT* bt) : IHierarchicalLinearStoichiometry<EXT,BT >(bt) {
-		for(size_t i=0;i<bt->Stages();++i) ProcessSubstage(i);
+	OneSidedStoichiometry(const BT& bt) : IHierarchicalLinearStoichiometry<EXT,BT >(bt) {
+		for(size_t i=0;i<Base().Stages();++i) ProcessSubstage(i);
 		this->Finish();
 	}
 
@@ -245,6 +245,7 @@ public:
 
 	MatrixType SpeciesStructure(size_t stage) const { return EXT::CreateMatrix(1,1); }
 
+	IKineticStoichiometry<EXT>* copy() const { return new OneSidedStoichiometry(*this); }
 };
 }
 

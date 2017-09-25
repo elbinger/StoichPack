@@ -1,46 +1,33 @@
 #include "MyStoichiometries.h"
 #include "ODEConstants.h"
+#include "../Utility/Newton.h"
 #include <iostream>
 #include <fstream>
 
 using namespace std;
 
 template<typename T>
-bool SolveStage(const T& S, const EXT::VectorArrayType& cold_all, EXT::VectorArrayType& c_all, size_t stage){
-	assert(stage<S.Stages());
-
-	cout<<"| | Stage "<<stage<<endl;
-
-	EXT::VectorType& c = c_all[stage];
-	const EXT::VectorType& cold = cold_all[stage];
-
-	S.SpeciesRates(c_all,stage);
-
-	EXT::VectorType R = (c-cold)/ODEConstants::dt-S.SpeciesRates(c_all,stage);
-	EXT::MatrixType J(c.rows(),c.rows());
-	double r = R.norm();
-
-	for(int i=0;i<ODEConstants::max_iterations && r==r && r>=ODEConstants::epsilon ;++i){
-		cout<<"| | | r("<<i<<")= "<<r<<endl;
-		J = - S.DiffSpeciesRates(c_all,stage);
+class ODENewtonProblem{
+public:
+	const T& S;
+	EXT::VectorArrayType& all;
+	const EXT::VectorType& cold;
+	size_t stage;
+	void Residual(EXT::VectorType& c, EXT::VectorType& R){
+		S.ApplyCorrection(all,stage);
+		R = (c-cold)/ODEConstants::dt-S.SpeciesRates(all,stage);
+	}
+	void Jacobi(const EXT::VectorType& c, EXT::MatrixType& J){
+		J = - S.DiffSpeciesRates(all,stage);
 		for(int j=0;j<c.rows();++j){
 			J(j,j)+=1./ODEConstants::dt;
 		}
-		c-=J.fullPivLu().solve(R);
-		S.ApplyCorrection(c_all,stage);
-		R=(c-cold)/ODEConstants::dt-S.SpeciesRates(c_all,stage);
-		r=R.norm();
 	}
+	EXT::VectorType Solve(const EXT::MatrixType& J, const EXT::VectorType& R) { return J.fullPivLu().solve(R); }
 
-	cout<<"| | | r(end)= "<<r;
-	if(r==r && r<ODEConstants::epsilon){
-		cout<<" --> CONVERGED"<<endl;
-		return true;
-	} else {
-		cout<<" --> NOT CONVERGED"<<endl;
-		return false;
-	}
-}
+	ODENewtonProblem(const T& stoichiometry, EXT::VectorArrayType& a, const EXT::VectorType& old, size_t s)
+	                 : S(stoichiometry), all(a), cold(old), stage(s) {}
+};
 
 template<typename T>
 EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
@@ -49,8 +36,19 @@ EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
 	for(double t = 0;t<=ODEConstants::T;){
 		t+=ODEConstants::dt;
 		cout<<"| From "<<t-ODEConstants::dt<<" to "<<t<<":"<<endl;
-		for(size_t i=0;i<S.Stages();++i){
-			if(!SolveStage(S,cold,c,i)) throw "Could not solve subproblem!";
+		for(size_t stage=0;stage<S.Stages();++stage){
+			cout<<"| | Stage "<<stage<<":"<<endl;
+			const size_t species = S.AllSpecies(stage);
+			ODENewtonProblem<T> problem(S,c,cold[stage],stage);
+			EXT::MatrixType J(species,species);
+			NewtonReturn result=Newton(c[stage],J,problem,
+			                           ODEConstants::epsilon,ODEConstants::max_iterations);
+			cout<<"| | r("<<result.iterations<<") = "<<result.residual<<" --> ";
+			if(!result.converged){
+				cout<<"NOT CONVERGED!"<<endl;
+				throw "Could not solve subproblem!";
+			}
+			cout<<"CONVERGED!"<<endl;
 		}
 		cold=c;
 	}
@@ -77,22 +75,18 @@ EXT::VectorType GetInitial(const BasicKineticStoichiometry<EXT>& S){
 		
 int main(){
 	ODEConstants::print();
-	BasicKineticStoichiometry<EXT>* S = LoadStoichiometry(ODEConstants::example);
-	EXT::VectorType c =GetInitial(*S);
+	BasicKineticStoichiometry<EXT> S = LoadStoichiometry(ODEConstants::example);
+	EXT::VectorType c =GetInitial(S);
 	cout<<endl<<"c(0)="<<endl<<c<<endl<<endl;
 	if(!ODEConstants::virtual_interface){
 		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED){
-			OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> >* tmp=new OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> >(S);
-			c=SolveProblem(*tmp,c);
-			delete tmp;
-		} else {
-			c=SolveProblem(*S,c);
-			delete S;
-		}
+			OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> > tmp(S);
+			c=SolveProblem(tmp,c);
+		} else c=SolveProblem(S,c);
 	} else {
-		IKineticStoichiometry<EXT>* tmp;
+		IKineticStoichiometry<EXT>* tmp = 0;
 		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED) tmp=new OneSidedStoichiometry<EXT>(S);
-		else tmp=S;
+		else tmp=S.copy();
 		c=SolveProblem(*tmp,c);
 		delete tmp;
 	}

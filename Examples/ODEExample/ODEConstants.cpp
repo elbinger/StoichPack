@@ -13,7 +13,7 @@ const sp_scalar ODEConstants::epsilon = 1e-12; //stopping criterion for newton m
 const sp_scalar ODEConstants::T = 10; // end of time interval (start=0)
 const sp_scalar ODEConstants::dt = 0.1; // time step width
 
-const std::string ODEConstants::example = "Example1"; //"ExampleX", X = 1 ... 2
+const std::string ODEConstants::example = "Example1"; //"ExampleX", X = 1 ... 3
 
 //preprocessing: PreprocessingType::NONE for no preprocessing, PreprocessingType::ONESIDED for exploiting one sided couplings
 const PreprocessingType ODEConstants::preprocessing = PreprocessingType::ONESIDED;

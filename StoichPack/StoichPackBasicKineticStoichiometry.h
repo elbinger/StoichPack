@@ -7,13 +7,13 @@
 namespace StoichPack{
  template<typename EXT, typename ReactionType = IKineticReaction>
  class BasicKineticStoichiometry : public IKineticStoichiometry<EXT>{
-	typedef ReactionType* RPTR;
+	typedef std::shared_ptr<ReactionType> SHARED_RPTR;
 	typedef const ReactionType& RREF;
  private:
 	template<typename OP, typename INDEX>
 	typename OP::ReturnType ReactionLoop(OP& op, const INDEX& index) const {
 		const size_t s=index.size();
-		const std::vector<RPTR>& r=this->stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=this->stoichiometry.Reactions();
 		for(size_t i=0;i<s;++i,++op){
 			assert(index[i]<r.size());
 			op.apply(*r[index[i]]);
@@ -114,7 +114,7 @@ namespace StoichPack{
 		if(this->Stages()!=0) throw StoichPackException("Something is really messed up!");
 
 		//assemble stoichiometric matrix
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t n = stoichiometry.MobileSpecies()+stoichiometry.ImmobileSpecies();
 		typename EXT::MatrixType stoich = EXT::CreateZeroMatrix(n,r.size());
 		for(size_t i=0;i<r.size();++i){
@@ -152,7 +152,7 @@ namespace StoichPack{
 		ReactionLoop(tmp,FullIndex(stoichiometry.Reactions().size()));
 		return ret;
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= r.size();
 		VectorType ret = EXT::CreateVector(s);
 		typename EXT::VectorIteratorType it = EXT::Begin(ret);
@@ -169,7 +169,7 @@ namespace StoichPack{
 		ReactionLoop(tmp,FullIndex(stoichiometry.Reactions().size()));
 		return ret;
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= r.size();
 		VectorType ret = EXT::CreateVector(s);
 		typename EXT::VectorIteratorType it = EXT::Begin(ret);
@@ -188,7 +188,7 @@ namespace StoichPack{
 		ReactionLoop(tmp,I);
 		return ret;
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= I.size();
 		VectorType ret = EXT::CreateVector(s);
 		typename EXT::VectorIteratorType it = EXT::Begin(ret);
@@ -206,7 +206,7 @@ namespace StoichPack{
 		ReactionLoop(tmp,I);
 		return ret;
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= I.size();
 		VectorType ret = EXT::CreateVector(s);
 		typename EXT::VectorIteratorType it = EXT::Begin(ret);
@@ -224,7 +224,7 @@ namespace StoichPack{
 		Impl1DiffRateOp tmp(all,s,this->AllSpecies());
 		return ReactionLoop(tmp,FullIndex(s));
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= r.size();
 		MatrixType ret = EXT::CreateZeroMatrix(s,this->AllSpecies());
 		const typename EXT::ConstVectorIteratorType data = EXT::ConstBegin(all);
@@ -239,7 +239,7 @@ namespace StoichPack{
 		Impl2DiffRateOp tmp(all,s,this->MobileSpecies(),this->ImmobileSpecies());
 		return ReactionLoop(tmp,FullIndex(s));
 		/*assert(this->CheckSize(all,stage));
-		const std::vector<RPTR>& r=stoichiometry.Reactions();
+		const std::vector<SHARED_RPTR>& r=stoichiometry.Reactions();
 		const size_t s= r.size();
 		MatrixPairType ret(EXT::CreateZeroMatrix(s,this->MobileSpecies()),EXT::CreateZeroMatrix(s,this->ImmobileSpecies()));
 		const typename EXT::ConstVectorIteratorType data1 = EXT::ConstBegin(all.Mobile());
@@ -328,6 +328,8 @@ namespace StoichPack{
 	MatrixType MobileTransformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->MobileSpecies(),1)); }
 	MatrixType ImmobileTransformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->ImmobileSpecies(),1)); }
 	MatrixType Transformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->AllSpecies(),1)); }
+
+	IKineticStoichiometry<EXT>* copy() const { return new BasicKineticStoichiometry(*this); }
  };
 } // namespace StoichPack
 

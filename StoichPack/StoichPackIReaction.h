@@ -16,7 +16,6 @@ namespace StoichPack{
 
  protected:
 	void AddSpecies(const std::string& species, sp_scalar weight) {
-		if(weight==0) throw StoichPackException("Reaction "+Name()+": Cannot add species "+species+" with weight 0!");
 		participants.push_back(Species(species));
 		coefficients.push_back(weight);
 	}
@@ -33,11 +32,6 @@ namespace StoichPack{
 			if(pos==all.end()) throw StoichPackException("Reaction "+Name()+": Unknown species "+part->Name());
 			else part->Update(*pos);
 		}
-	}
-
-	bool Initialized() const {
-		if(participants.size()==0) throw StoichPackException("Reaction "+Name()+": no participants");
-		return participants[0].Initialized();
 	}
 
 	/*bool AllConst() const {
