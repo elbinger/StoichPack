@@ -4,9 +4,6 @@
 #include <exception>
 #include <string>
 
-#define USE1
-//#define USE2
-
 namespace StoichPack{
 
  //type for scalars, change if you want to. default = double.
@@ -21,6 +18,8 @@ namespace StoichPack{
 		StoichPackException(const std::string& desc) : description("StoichPackException: "+desc) {}
 
 		const char* what() const throw() { return description.c_str(); } // inherited
+
+		virtual ~StoichPackException() throw() {}
  };
 
 }

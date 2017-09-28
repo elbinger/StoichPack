@@ -1,11 +1,11 @@
-#ifndef __H_STOICHPACK_HIERARCHICAL_LINEAR_STOICHIOMETRY__
-#define __H_STOICHPACK_HIERARCHICAL_LINEAR_STOICHIOMETRY__
+#ifndef __H_STOICHPACK_HIERARCHICAL_LINEAR_KINETIC_CONTAINER__
+#define __H_STOICHPACK_HIERARCHICAL_LINEAR_KINETIC_CONTAINER__
 
-#include "StoichPackIHierarchicalStoichiometry.h"
+#include "StoichPackIHierarchicalKineticContainer.h"
 
 namespace StoichPack {
 template<typename EXT, typename BT>
-class IHierarchicalLinearStoichiometry : public IHierarchicalStoichiometry<EXT,BT>{
+class IHierarchicalLinearKineticContainer : public IHierarchicalKineticContainer<EXT,BT>{
  	typedef typename EXT::VectorType VectorType;
 	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
@@ -39,12 +39,12 @@ private:
 	}
 
 protected:
-	using IHierarchicalStoichiometry<EXT,BT>::Finish;
-	using IHierarchicalStoichiometry<EXT,BT>::SubStage;
-	using IHierarchicalStoichiometry<EXT,BT>::SubStageFirst;
-	using IHierarchicalStoichiometry<EXT,BT>::Base;
+	using IHierarchicalKineticContainer<EXT,BT>::Finish;
+	using IHierarchicalKineticContainer<EXT,BT>::SubStage;
+	using IHierarchicalKineticContainer<EXT,BT>::SubStageFirst;
+	using IHierarchicalKineticContainer<EXT,BT>::Base;
 
-	IHierarchicalLinearStoichiometry(const BT& oth) : IHierarchicalStoichiometry<EXT,BT>(oth) {}
+	IHierarchicalLinearKineticContainer(const BT& oth) : IHierarchicalKineticContainer<EXT,BT>(oth) {}
 	void AddStage(const MatrixType& stoich, size_t substage, bool correction, const MatrixType& toBasemobile, const MatrixType& toBaseimmobile, const MatrixType& fromBasemobile, const MatrixType& fromBaseimmobile){
 		const size_t basemobile=EXT::rows(toBasemobile);
 		const size_t baseimmobile=EXT::rows(toBaseimmobile);
@@ -67,7 +67,7 @@ protected:
 		MatrixType d = CombineCols<EXT>(EXT::CreateZeroMatrix(immobile,basemobile),fromBaseimmobile);
 		fromBase_global.push_back(CombineRows<EXT>(c,d));
 		
-		IHierarchicalStoichiometry<EXT,BT>::AddStage(stoich,mobile,substage,correction);
+		IHierarchicalKineticContainer<EXT,BT>::AddStage(stoich,mobile,substage,correction);
 	}
 
 	const MatrixType& toBase(size_t stage) const { return toBase_global[stage]; }
@@ -102,8 +102,11 @@ public:
 	MatrixType ImmobileBaseTransformation() const { return EXT::CreateMatrix(1,1); }
 	MatrixType BaseTransformation() const { return EXT::CreateMatrix(1,1); }
 
-	virtual ~IHierarchicalLinearStoichiometry() {}
+	virtual ~IHierarchicalLinearKineticContainer() {}
 };
+
+template<typename EXT, typename BT>
+using IHierarchicalLinearStoichiometry = IHierarchicalLinearKineticContainer<EXT,BT>;
 	
 }
 

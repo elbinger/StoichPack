@@ -3,7 +3,7 @@
 
 //include everything for full StoichPack functionality
 
-#include "StoichPackBasicKineticStoichiometry.h"
-#include "StoichPackOneSidedStoichiometry.h"
+#include "StoichPackBasicKineticContainer.h"
+#include "StoichPackOneSidedCouplings.h"
 
 #endif

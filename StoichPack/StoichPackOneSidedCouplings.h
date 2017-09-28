@@ -1,7 +1,7 @@
-#ifndef __H_STOICHPACK_ONESIDED__
-#define __H_STOICHPACK_ONESIDED__
+#ifndef __H_STOICHPACK_ONESIDED_KINETIC_COUPLINGS__
+#define __H_STOICHPACK_ONESIDED_KINETIC_COUPLINGS__
 
-#include "StoichPackIHierarchicalLinearStoichiometry.h"
+#include "StoichPackIHierarchicalLinearKineticContainer.h"
 #include <algorithm>
 
 namespace StoichPack{
@@ -28,8 +28,8 @@ public:
 	const typename EEXT::MatrixType& ToBase() const { return toBase; }
 };
 	
-template<typename EXT, class BT = IKineticStoichiometry<EXT> >
-class OneSidedStoichiometry : public IHierarchicalLinearStoichiometry<EXT,BT > {
+template<typename EXT, class BT = IKineticContainer<EXT> >
+class OneSidedCouplings : public IHierarchicalLinearKineticContainer<EXT,BT > {
  	typedef typename EXT::VectorType VectorType;
 	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
@@ -48,7 +48,7 @@ class OneSidedStoichiometry : public IHierarchicalLinearStoichiometry<EXT,BT > {
 	}
 
 private:
-	using IHierarchicalLinearStoichiometry<EXT,BT >::Base;
+	using IHierarchicalLinearKineticContainer<EXT,BT >::Base;
 
 	std::vector<IndexType> subreactions, const_subreactions;
 	std::vector<MatrixType> stoich_const, stoich_const_mobile, stoich_const_immobile;
@@ -153,7 +153,7 @@ private:
 		const_subreactions.push_back(constreactions);
 
 		Rearangement<EXT> rvar(varreactions,n_r);
-		IHierarchicalLinearStoichiometry<EXT,BT >::AddStage(R.FromBase()*Base().StoichiometricMatrices()[substage]*rvar.ToBase(),substage,true,subspecies_mobile.ToBase(),subspecies_immobile.ToBase(),subspecies_mobile.FromBase(),subspecies_immobile.FromBase());
+		IHierarchicalLinearKineticContainer<EXT,BT >::AddStage(R.FromBase()*Base().StoichiometricMatrices()[substage]*rvar.ToBase(),substage,true,subspecies_mobile.ToBase(),subspecies_immobile.ToBase(),subspecies_mobile.FromBase(),subspecies_immobile.FromBase());
 
 		Rearangement<EXT> rconst(constreactions,n_r);
 		const MatrixType& M=rconst.ToBase();
@@ -163,7 +163,7 @@ private:
 	}
 
 public:
-	OneSidedStoichiometry(const BT& bt) : IHierarchicalLinearStoichiometry<EXT,BT >(bt) {
+	OneSidedCouplings(const BT& bt) : IHierarchicalLinearKineticContainer<EXT,BT >(bt) {
 		for(size_t i=0;i<Base().Stages();++i) ProcessSubstage(i);
 		this->Finish();
 	}
@@ -245,8 +245,11 @@ public:
 
 	MatrixType SpeciesStructure(size_t stage) const { return EXT::CreateMatrix(1,1); }
 
-	IKineticStoichiometry<EXT>* copy() const { return new OneSidedStoichiometry(*this); }
+	IKineticContainer<EXT>* copy() const { return new OneSidedCouplings(*this); }
 };
+
+template<typename EXT, class BT = IKineticContainer<EXT> >
+using OneSidedStoichiometry = OneSidedCouplings<EXT,BT>;
 }
 
 #endif

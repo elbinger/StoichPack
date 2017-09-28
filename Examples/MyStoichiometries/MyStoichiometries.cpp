@@ -69,15 +69,17 @@ void Example3(KineticReactionArray<>& r){
 	r.AddSpecies("A3",species_type::mobile);
 }
 
-BasicKineticStoichiometry<EXT> LoadStoichiometry(const string& name){
+BasicKineticStoichiometry<EXT> LoadSystem(const string& name){
 	BasicKineticStoichiometry<EXT> ret;
 
-	if(name=="Example1") Example1(ret.stoichiometry);
-	else if(name=="Example2") Example2(ret.stoichiometry);
-	else if(name=="Example3") Example3(ret.stoichiometry);
-	else throw StoichPackException(string("Cound not find stoichiometry ")+name);
+	if(name=="Example1") Example1(ret.reactions);
+	else if(name=="Example2") Example2(ret.reactions);
+	else if(name=="Example3") Example3(ret.reactions);
+	else throw StoichPackException(string("Cound not find system ")+name);
 
 	ret.Initialize();
 	return ret;
 }
+
+BasicKineticStoichiometry<EXT> LoadStoichiometry(const string& name){ return LoadSystem(name); }
 

@@ -1,5 +1,5 @@
-#ifndef __H_STOICHPACK_IKINETICSTOICHIOMETRY__
-#define __H_STOICHPACK_IKINETICSTOICHIOMETRY__
+#ifndef __H_STOICHPACK_IKINETIC_CONTAINER__
+#define __H_STOICHPACK_IKINETIC_CONTAINER__
 
 #include "StoichPackUtility.h"
 #include "StoichPackSpecies.h"
@@ -7,7 +7,7 @@
 namespace StoichPack{
 
  template<typename EXT >
- class IKineticStoichiometry{
+ class IKineticContainer{
 	typedef typename EXT::VectorType VectorType;
 	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
@@ -21,11 +21,11 @@ namespace StoichPack{
 	size_t mobile_species, immobile_species;
 	std::vector<bool> correction;
 
-	IKineticStoichiometry& operator=(const IKineticStoichiometry<EXT>&);	//FORBID
+	IKineticContainer& operator=(const IKineticContainer<EXT>&);	//FORBID
 
  protected:
 	void AddStage(const MatrixType& stoich, size_t n_mobile, bool correct){
-		if(n_mobile>EXT::rows(stoich)) throw StoichPackException("Illegal values in IKineticStoichiometry::AddStage!");
+		if(n_mobile>EXT::rows(stoich)) throw StoichPackException("Illegal values in IKineticContainer::AddStage!");
 
 		if(EXT::rows(stoich)+EXT::cols(stoich)==0) throw StoichPackException("Cannot add empty stage");
 
@@ -41,12 +41,12 @@ namespace StoichPack{
 	}
 
 	void AddStage(const MatrixType& stoich_mob, const MatrixType& stoich_immob, bool correct){
-		if(EXT::cols(stoich_mob)!=EXT::cols(stoich_immob)) throw StoichPackException("Illegal values in IKineticStoichiometry::AddStage!");
+		if(EXT::cols(stoich_mob)!=EXT::cols(stoich_immob)) throw StoichPackException("Illegal values in IKineticContainer::AddStage!");
 		AddStage(EXT::CombineRows(stoich_mob,stoich_immob),EXT::rows(stoich_mob),correct);
 	}
 
  public:
-	IKineticStoichiometry() : mobile_species(0), immobile_species(0) {}
+	IKineticContainer() : mobile_species(0), immobile_species(0) {}
 
 	size_t Stages() const { return stoich_all.size(); }
 
@@ -191,7 +191,7 @@ namespace StoichPack{
 	virtual MatrixType ImmobileTransformation() const =0;
 	virtual MatrixType Transformation() const =0;
 
-	virtual IKineticStoichiometry<EXT>* copy() const =0;
+	virtual IKineticContainer<EXT>* copy() const =0;
 
 	VectorType ReactionRates(const VectorArrayType& all, size_t stage) const {
 		return ReactionRatesImpl1(ToOriginal(all),stage);
@@ -326,8 +326,11 @@ namespace StoichPack{
 
 	bool CorrectionAllowed(size_t stage) const { return correction[stage]; }
 	//dtor
-	virtual ~IKineticStoichiometry(){}	
+	virtual ~IKineticContainer(){}	
  };
+
+ template<typename EXT>
+ using IKineticStoichiometry = IKineticContainer<EXT>;
 } //namespace StoichPack
 
 #endif

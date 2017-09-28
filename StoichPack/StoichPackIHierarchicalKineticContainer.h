@@ -1,7 +1,7 @@
-#ifndef __H_STOICHPACK_HIERARCHICAL_STOICHIOMETRY__
-#define __H_STOICHPACK_HIERARCHICAL_STOICHIOMETRY__
+#ifndef __H_STOICHPACK_HIERARCHICAL_KINETIC_CONTAINER__
+#define __H_STOICHPACK_HIERARCHICAL_KINETIC_CONTAINER__
 
-#include "StoichPackIKineticStoichiometry.h"
+#include "StoichPackIKineticContainer.h"
 #include <memory>
 
 namespace StoichPack{
@@ -16,16 +16,16 @@ class BaseStorage{
 };
 
 template<typename EXT>
-class BaseStorage<EXT,IKineticStoichiometry<EXT> >{
+class BaseStorage<EXT,IKineticContainer<EXT> >{
 	private:
-	const std::shared_ptr<IKineticStoichiometry<EXT> > storage;
+	const std::shared_ptr<IKineticContainer<EXT> > storage;
 	public:
-	BaseStorage(const IKineticStoichiometry<EXT>& x) : storage(x.copy()) {}
-	const IKineticStoichiometry<EXT>& get() const { return *storage; }
+	BaseStorage(const IKineticContainer<EXT>& x) : storage(x.copy()) {}
+	const IKineticContainer<EXT>& get() const { return *storage; }
 };
 
-template<typename EXT, typename BT = IKineticStoichiometry<EXT> >
-class IHierarchicalStoichiometry : public IKineticStoichiometry<EXT>{
+template<typename EXT, typename BT = IKineticContainer<EXT> >
+class IHierarchicalKineticContainer : public IKineticContainer<EXT>{
  	typedef typename EXT::VectorType VectorType;
 	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
@@ -48,9 +48,9 @@ private:
 	}
 
 	//FORBID
-	IHierarchicalStoichiometry();
+	IHierarchicalKineticContainer();
 protected:
-	IHierarchicalStoichiometry(const BT& bt) : base(bt) {}
+	IHierarchicalKineticContainer(const BT& bt) : base(bt) {}
 
 	void Finish() {
 		assert(substages_first.size()==Base().Stages());
@@ -59,12 +59,12 @@ protected:
 
 	void AddStage(const MatrixType& stoich, size_t n_mobile, size_t subs, bool correction){
 		UpdateSubStages(subs);
-		IKineticStoichiometry<EXT>::AddStage(stoich,n_mobile,correction);
+		IKineticContainer<EXT>::AddStage(stoich,n_mobile,correction);
 	}
 
 	void AddStage(const MatrixType& stoich_mob, const MatrixType& stoich_immob, size_t subs, bool correction){
 		UpdateSubStages(subs);
-		IKineticStoichiometry<EXT>::AddStage(stoich_mob,stoich_immob, correction);
+		IKineticContainer<EXT>::AddStage(stoich_mob,stoich_immob, correction);
 	}
 
 	size_t SubStage(size_t i) const { assert(i<Stages()); return substages[i]; }
@@ -72,8 +72,8 @@ protected:
 	const BT& Base() const { return base.get(); }
 
 public:
-	using IKineticStoichiometry<EXT>::Stages;
-	using IKineticStoichiometry<EXT>::CheckSize;
+	using IKineticContainer<EXT>::Stages;
+	using IKineticContainer<EXT>::CheckSize;
 
 	virtual void FromBaseImpl(const VectorArrayType& all, VectorArrayType& ret) const =0;
 	virtual void FromBaseMobileImpl(const VectorArrayType& mobile, VectorArrayType& ret) const =0;
@@ -163,8 +163,11 @@ public:
 
 	const std::vector<Species>& Participants() const { return Base().Participants(); }
 
-	virtual ~IHierarchicalStoichiometry() {}
+	virtual ~IHierarchicalKineticContainer() {}
 };
+
+template<typename EXT, typename BT>
+using IHierarchicalStoichiometry = IHierarchicalKineticContainer<EXT,BT>;
 }
 
 #endif
