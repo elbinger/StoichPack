@@ -1,3 +1,7 @@
+/* File: StoichPackUtility.h
+ * Purpose: Provide some functions needed in several modules of StoichPack.
+ * Author: Tobias Elbinger <elbinger@math.fau.de> */
+
 #ifndef __H_STOICHPACK_UTILITY__
 #define __H_STOICHPACK_UTILITY__
 
@@ -7,7 +11,8 @@
 #include "StoichPackDefines.h"
 
 namespace StoichPack{
- //some default types and functions. use them if you want to.
+ /* A pair class. The beahaviour is the same as for std::pair, except that first becomes Mobile() and second becomes
+  * Immobile(). This increases readability of the code. */
  template<typename T>
  class Pair{
  private:
@@ -20,6 +25,7 @@ namespace StoichPack{
 	const T& Immobile() const { return immobile; }
  };
  
+ /* Combine 2 vectors x and y to one vector containing the entries of x and y, starting with the entries of x. */ 
  template<typename EXT>
  typename EXT::VectorType Combine(const typename EXT::VectorType& x, const typename EXT::VectorType&  y){
 	const size_t sx=EXT::size(x);
@@ -32,7 +38,13 @@ namespace StoichPack{
 
 	return ret;
  }
- 
+
+ /* Combine the vectors in a VectorPair. */ 
+ template<typename EXT>
+ typename EXT::VectorType Combine(const typename EXT::VectorPairType& x) { return Combine<EXT>(x.Mobile(),x.Immobile()); }
+
+ /* Divide the vector x in 2 vectors. The first vector (accesible via result.Mobile()) contains the first n_mobile entries.
+  * The second vector (accessible via result.Immobile()) contains the rest. */
  template<typename EXT>
  typename EXT::VectorPairType Divide(const typename EXT::VectorType& x, size_t n_mobile) {
 	assert(EXT::size(x)>=n_mobile);
@@ -42,6 +54,8 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Vertical concatination of the matrices x and y: if x has nx rows and y has ny rows, the result has nx+ny rows. The first nx rows
+  * of the result are the rows of x, the last ny rows are the rows of y. x and y must have the same number of columns. */
  template<typename EXT>
  typename EXT::MatrixType CombineRows(const typename EXT::MatrixType& x, const typename EXT::MatrixType& y){
 	assert(EXT::cols(y)==EXT::cols(x));
@@ -56,6 +70,9 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Horizontal concatination of the matrices x and y: if x has nx columns and y has ny columns, the result has nx+ny columns.
+  * The first nx columns of the result are the columns of x, the last ny columns are the columns of y.
+  * x and y must have the same number of rows. */
  template<typename EXT>
  typename EXT::MatrixType CombineCols(const typename EXT::MatrixType& x, const typename EXT::MatrixType& y){
 	assert(EXT::rows(y)==EXT::rows(x));
@@ -69,7 +86,9 @@ namespace StoichPack{
 
 	return ret;
  }
- 
+
+ /* Divide the matrix x in two submatrices. The first one (accesible via result.Mobile()) contains the first n_mobile rows of x,
+  * the second one (accessible via result.Immobile()) contains the rest. */ 
  template<typename EXT>
  typename EXT::MatrixPairType DivideRows(const typename EXT::MatrixType& x, size_t m_mobile){
 	const size_t m=EXT::rows(x);
@@ -85,6 +104,8 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Divide the matrix x in two submatrices. The first one (accesible via result.Mobile()) contains the first n_mobile columns of x,
+  * the second one (accessible via result.Immobile()) contains the rest. */ 
  template<typename EXT>
  typename EXT::MatrixPairType DivideCols(const typename EXT::MatrixType& x, size_t n_mobile){
 	const size_t n=EXT::cols(x);
@@ -100,6 +121,7 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Get a matrix that consists of the columns of M specified in I. */
  template<typename EXT>
  typename EXT::MatrixType SubCols(const typename EXT::MatrixType& M, const std::vector<size_t>& I){
 	const size_t s = I.size();
@@ -111,6 +133,7 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Get a vector that consists of the entries of x specified in I. */
  template<typename EXT>
  typename EXT::VectorType SubEntries(const typename EXT::VectorType& x, const std::vector<size_t>& I){
 	const size_t s=I.size();
@@ -125,6 +148,9 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Get a matrix that speciefies if a entry of M is nonzero, i.e.:
+  * result(i,j)=1 <--> M(i,j)!=0
+  * result(i,j)=0 <--> M(i,j)=0 */
  template<typename EXT>
  typename EXT::MatrixType BooleanMatrix(const typename EXT::MatrixType& M){
 	typename EXT::MatrixType ret(M);
@@ -135,6 +161,8 @@ namespace StoichPack{
 	}
 	return ret;
  }
+
+ /* Create a diagonal square matrix, containing the entries of values on its diagonal. */
  template<typename EXT, typename T=sp_scalar>
  typename EXT::MatrixType Diag(const std::vector<T>& values){
 	const size_t s=values.size();

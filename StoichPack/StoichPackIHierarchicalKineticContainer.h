@@ -1,3 +1,7 @@
+/* File: StoichPackIHierarchicalKineticContainer.h
+ * Purpose: Define an interface for hierarchical containers.
+ * Author: Tobias Elbinger <elbinger@math.fau.de> */
+
 #ifndef __H_STOICHPACK_HIERARCHICAL_KINETIC_CONTAINER__
 #define __H_STOICHPACK_HIERARCHICAL_KINETIC_CONTAINER__
 
@@ -6,6 +10,7 @@
 
 namespace StoichPack{
 
+/* class BaseStorage: stroage for underlying container. */
 template<typename EXT, typename BT>
 class BaseStorage{
 	private:
@@ -15,6 +20,7 @@ class BaseStorage{
 	const BT& get() const { return storage; }
 };
 
+/* specialization for IKineticContainer<EXT>: storage only possible as pointer */
 template<typename EXT>
 class BaseStorage<EXT,IKineticContainer<EXT> >{
 	private:
@@ -24,6 +30,7 @@ class BaseStorage<EXT,IKineticContainer<EXT> >{
 	const IKineticContainer<EXT>& get() const { return *storage; }
 };
 
+/* class IHierarchicalKineticContainer: interface for hierarchical containers. */
 template<typename EXT, typename BT = IKineticContainer<EXT> >
 class IHierarchicalKineticContainer : public IKineticContainer<EXT>{
  	typedef typename EXT::VectorType VectorType;
@@ -161,7 +168,7 @@ public:
 	MatrixType Transformation() const { return Base().Transformation()*BaseTransformation(); }
 
 
-	const std::vector<Species>& Participants() const { return Base().Participants(); }
+	const std::vector<InitializedSpecies>& Participants() const { return Base().Participants(); }
 
 	virtual ~IHierarchicalKineticContainer() {}
 };

@@ -1,3 +1,7 @@
+/* File: StoichPackIHierarchicalLinearKineticContainer.h
+ * Purpose: Define a interface for hierarchical containers that preform only linear transformations.
+ * Author: Tobias Elbinger <elbinger@math.fau.de> */
+
 #ifndef __H_STOICHPACK_HIERARCHICAL_LINEAR_KINETIC_CONTAINER__
 #define __H_STOICHPACK_HIERARCHICAL_LINEAR_KINETIC_CONTAINER__
 
@@ -12,9 +16,10 @@ class IHierarchicalLinearKineticContainer : public IHierarchicalKineticContainer
 	typedef typename EXT::VectorArrayPairType VectorArrayPairType;
 	typedef typename EXT::MatrixType MatrixType;
 private:
-	std::vector<MatrixType> toBase_global, toBase_mobile, toBase_immobile;
-	std::vector<MatrixType> fromBase_global, fromBase_mobile, fromBase_immobile;
+	std::vector<MatrixType> toBase_global, toBase_mobile, toBase_immobile; //transfomations to underlying presentation
+	std::vector<MatrixType> fromBase_global, fromBase_mobile, fromBase_immobile; //transformations from underlying presentation
 
+	/* Transform the underlying presentation in base using the transformations in R */
 	void FromBaseImplImpl(const VectorArrayType& base, VectorArrayType& ret, const std::vector<MatrixType>& R) const{
 		const size_t s=R.size();
 		assert(s==this->Stages());

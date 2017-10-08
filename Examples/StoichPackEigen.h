@@ -106,26 +106,45 @@ public:
 template<typename T, bool rowwise>
 EigenIterator<T,rowwise> operator+(const EigenIterator<T,rowwise>& x, size_t i) { return EigenIterator<T,rowwise>(x)+=i; }
 
+#include <iostream>
+using namespace std;
+
+class OrthDecomposition{
+private:
+	Matrix<sp_scalar,Dynamic,Dynamic> _q,_r;
+	OrthDecomposition();
+public:
+	OrthDecomposition(const Matrix<sp_scalar,Dynamic,Dynamic>& A){
+		ColPivHouseholderQR<Matrix<sp_scalar,Dynamic,Dynamic> > decomp(A);
+		Matrix<sp_scalar,Dynamic,Dynamic> rr = decomp.matrixR();
+		for(int j=0;j<min(rr.rows(),rr.cols());++j){
+			for(int i=j+1;i<rr.rows();++i) rr(i,j)=0;
+		}
+		Matrix<sp_scalar,Dynamic,Dynamic> p = decomp.colsPermutation();
+		Matrix<sp_scalar,Dynamic,Dynamic> tmp = rr*p.transpose();
+		int rank = decomp.rank();
+		_r=tmp.block(0,0,rank,tmp.cols());
+		_q=decomp.matrixQ();
+	}
+	const Matrix<sp_scalar,Dynamic,Dynamic>& Q() const { return _q; }
+	const Matrix<sp_scalar,Dynamic,Dynamic>& R() const { return _r; }
+};
+			
 class EXT{
 public:
-	typedef VectorXd VectorType;
+	typedef Matrix<sp_scalar,Dynamic,1> VectorType;
 	typedef Pair<VectorType> VectorPairType;
 
 	static size_t size(const VectorType& x) { return x.rows(); }
-	static VectorType CreateVector(size_t s) { return VectorXd(s); }
-	static VectorType CreateVector(size_t s, sp_scalar v){
-		VectorXd ret(s);
-		for(size_t i=0;i<s;++i) ret[i]=v;
-		return ret;
-	}
-	static VectorType CreateZeroVector(size_t s) { return ArrayXd::Zero(s); }
+	static VectorType CreateVector(size_t s) { return VectorType(s); }
+	static VectorType CreateVector(size_t s, sp_scalar v){ return Array<sp_scalar,Dynamic,1>::Constant(s,1,v); }
+	static VectorType CreateZeroVector(size_t s) { return Array<sp_scalar,Dynamic,1>::Zero(s,1); }
 
 	typedef EigenIterator<VectorType,false> VectorIteratorType;
 	typedef EigenConstIterator<VectorType,false> ConstVectorIteratorType;
 
 	static VectorIteratorType Begin(VectorType& x) { return VectorIteratorType(x,EigenIteratorPos(0,0)); }
 	static VectorIteratorType End(VectorType& x) { return VectorIteratorType(x,EigenIteratorPos(0,EXT::size(x))); }
-
 	static ConstVectorIteratorType ConstBegin(const VectorType& x) { return ConstVectorIteratorType(x,EigenIteratorPos(0,0)); }
 	static ConstVectorIteratorType ConstEnd(const VectorType& x) { return ConstVectorIteratorType(x,EigenIteratorPos(0,size(x))); }
 
@@ -157,14 +176,14 @@ public:
 		return ret;
 	}
 
-	typedef MatrixXd MatrixType;
+	typedef Matrix<sp_scalar,Dynamic,Dynamic> MatrixType;
 	typedef Pair<MatrixType> MatrixPairType;
 	typedef Pair<MatrixPairType> MatrixQuadType;
 
 	static size_t rows(const MatrixType& A) { return A.rows(); }
 	static size_t cols(const MatrixType& A) { return A.cols(); }
-	static MatrixType CreateMatrix(size_t r, size_t c) { return MatrixXd(r,c); }
-	static MatrixType CreateZeroMatrix(size_t r, size_t c) { return ArrayXXd::Zero(r,c); }
+	static MatrixType CreateMatrix(size_t r, size_t c) { return MatrixType(r,c); }
+	static MatrixType CreateZeroMatrix(size_t r, size_t c) { return Array<sp_scalar,Dynamic,Dynamic>::Zero(r,c); }
 	static MatrixType Transposed(const MatrixType& M) { return M.transpose(); }
 
 	typedef EigenIterator<MatrixType,false> ColWiseIteratorType;
@@ -190,24 +209,13 @@ public:
 		return ConstRowWiseIteratorType(M,EigenIteratorPos(row,M.cols()));
 	}
 
-	static VectorType Combine(const VectorType& x, const VectorType& y) { return StoichPack::Combine<EXT>(x,y); }
-	static VectorType Combine(const VectorPairType& x) { return Combine(x.Mobile(),x.Immobile()); }
-	static VectorPairType Divide(const VectorType& x, size_t n_mobile) { return StoichPack::Divide<EXT>(x,n_mobile); }
-	//static MatrixPairType CombineRows(const MatrixType& x, const MatrixType& y) { return StoichPack::CombineRows<EXT>(x,y); }
-	//static MatrixPairType CombineRows(const MatrixPairType& x) { return CombineRows(x.Mobile(),x.Immobile(); }
-	//static MatrixPairType CombineCols(const MatrixType& x, const MatrixType& y) { return StoichPack::CombineCols<EXT>(x,y); }
-	//static MatrixPairType CombineCols(const MatrixPairType& x) { return CombineCols(x.Mobile(),x.Immobile(); }
-	static MatrixPairType DivideRows(const MatrixType& A, size_t n_mobile) { return StoichPack::DivideRows<EXT>(A,n_mobile); }
-	static MatrixPairType DivideCols(const MatrixType& A, size_t n_mobile) { return StoichPack::DivideCols<EXT>(A,n_mobile); }
-
-	static MatrixType SubCols(const MatrixType& A, const std::vector<size_t>& I) { return StoichPack::SubCols<EXT>(A,I); }
-	static VectorType SubEntries(const VectorType& x, const std::vector<size_t>& I) { return StoichPack::SubEntries<EXT>(x,I); }
-
 	static void set(VectorArrayType& x, const VectorArrayType& y) {
 		const size_t s=y.size();
 		assert(x.size()==s);
 		for(size_t i=0;i<s;++i) x[i]=y[i];
 	}
+
+	typedef OrthDecomposition OrthogonalDecompositionType;
 };
 
 #endif

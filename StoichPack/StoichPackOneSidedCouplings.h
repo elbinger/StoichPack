@@ -36,7 +36,6 @@ class OneSidedCouplings : public IHierarchicalLinearKineticContainer<EXT,BT > {
 	typedef typename EXT::VectorArrayPairType VectorArrayPairType;
 	typedef typename EXT::MatrixType MatrixType;
 	typedef typename EXT::MatrixPairType MatrixPairType;
-	typedef typename EXT::MatrixQuadType MatrixQuadType;
 
 	typedef std::vector<size_t> IndexType;
 

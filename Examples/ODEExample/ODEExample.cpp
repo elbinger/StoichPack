@@ -1,4 +1,12 @@
-#include "MyStoichiometries.h"
+/*
+File: ODEExemple.cpp
+Author: Tobias Elbinger <elbinger@math.fau.de>
+Purpose:
+ 1) Demonstrate the "template"-interface of StoichPack
+ 2) Demonstrate how to solve ODEs with StoichPack
+*/
+
+#include "MyBiochemicalSystems.h"
 #include "ODEConstants.h"
 #include "../Utility/Newton.h"
 #include <iostream>
@@ -25,8 +33,8 @@ public:
 	}
 	EXT::VectorType Solve(const EXT::MatrixType& J, const EXT::VectorType& R) { return J.fullPivLu().solve(R); }
 
-	ODENewtonProblem(const T& stoichiometry, EXT::VectorArrayType& a, const EXT::VectorType& old, size_t s)
-	                 : S(stoichiometry), all(a), cold(old), stage(s) {}
+	ODENewtonProblem(const T& container, EXT::VectorArrayType& a, const EXT::VectorType& old, size_t s)
+	                 : S(container), all(a), cold(old), stage(s) {}
 };
 
 template<typename T>
@@ -54,43 +62,27 @@ EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
 	}
 	return S.ToOriginal(c);
 }
-
-EXT::VectorType GetInitial(const BasicKineticStoichiometry<EXT>& S){
-	if(ODEConstants::example=="Example1" || ODEConstants::example=="Example2"){
-		EXT::VectorType c(3);
-		c<<1,0,0;
-		return c;
-	} else if(ODEConstants::example=="Example3"){
-		const std::vector<Species>& x = S.Participants();
-		EXT::VectorType c(x.size());
-		for(size_t i=0;i<x.size();++i) {
-			std::string n=x[i].Name().substr(0,1);
-			if(n=="A") c[i]=1;
-			else if(n=="C") c[i]=0.5;
-			else c[i]=0;
-		}
-		return c;
-	} else throw "Unknown example";
-}
 		
 int main(){
-	ODEConstants::print();
-	BasicKineticStoichiometry<EXT> S = LoadStoichiometry(ODEConstants::example);
-	EXT::VectorType c =GetInitial(S);
-	cout<<endl<<"c(0)="<<endl<<c<<endl<<endl;
-	if(!ODEConstants::virtual_interface){
-		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED){
-			OneSidedStoichiometry<EXT,BasicKineticStoichiometry<EXT> > tmp(S);
-			c=SolveProblem(tmp,c);
-		} else c=SolveProblem(S,c);
-	} else {
-		IKineticStoichiometry<EXT>* tmp = 0;
-		if(ODEConstants::preprocessing==PreprocessingType::ONESIDED) tmp=new OneSidedStoichiometry<EXT>(S);
-		else tmp=S.copy();
-		c=SolveProblem(*tmp,c);
-		delete tmp;
-	}
+	ODEConstants::print(); //print configuration
+	const BiochemicalSystem<> system = LoadSystem(ODEConstants::system); //load specified system
+	BasicKineticContainer<EXT> S(system);
 
+	EXT::VectorType c =GetDefaultValues<EXT>(ODEConstants::system,S.Problem()); //load intial values
+
+	cout<<"Loaded and initialized the following system:"<<endl<<S.Problem()<<endl; //print specified problem
+	cout<<endl<<"c(0)="<<endl<<c<<endl<<endl; //print intital values
+
+	//preprocess and solve
+	if(ODEConstants::preprocessing==PreprocessingType::ONESIDED){
+		OneSidedCouplings<EXT,BasicKineticContainer<EXT> > tmp(S); //preprocessing
+		c=SolveProblem(tmp,c); //solve preprocessed problem, return values in original form
+	} else if(ODEConstants::preprocessing==PreprocessingType::REDUCED) {
+		ReducedKineticContainer<EXT,BasicKineticContainer<EXT> > tmp(S); //preprocessing
+		c=SolveProblem(tmp,c); //solve preprocessed problem, return values in original form
+	} else c=SolveProblem(S,c);
+
+	//print and store results
 	cout<<endl<<"c("<<ODEConstants::T<<") = "<<endl<<c<<endl;
 	ofstream os(ODEConstants::FileName().c_str());
 	assert(os.is_open());

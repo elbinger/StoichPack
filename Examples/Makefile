@@ -1,7 +1,8 @@
 .PHONY = clean distclean
 
 default: eigen
-	cd MyStoichiometries; $(MAKE)
+	cd Utility; $(MAKE)
+	cd MyBiochemicalSystems; $(MAKE)
 	cd ODEExample; $(MAKE)
 
 eigen:
@@ -9,7 +10,8 @@ eigen:
 
 clean:
 	rm -f *~
-	cd MyStoichiometries; $(MAKE) clean
+	cd Utility; $(MAKE) clean
+	cd MyBiochemicalSystems; $(MAKE) clean
 	cd ODEExample; $(MAKE) clean
 	rm -rf eigen
 

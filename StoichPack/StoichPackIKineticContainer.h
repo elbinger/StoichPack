@@ -1,3 +1,7 @@
+/* File: StoichPackIKineticContainer.h
+ * Purpose: Define an interface for reaction containers.
+ * Author: Tobias Elbinger <elbinger@math.fau.de> */
+
 #ifndef __H_STOICHPACK_IKINETIC_CONTAINER__
 #define __H_STOICHPACK_IKINETIC_CONTAINER__
 
@@ -17,37 +21,56 @@ namespace StoichPack{
 	typedef typename EXT::MatrixQuadType MatrixQuadType;
 
  private:
+	//stoichiometric matrices for mobile / immobile / all species for each stage
 	std::vector<MatrixType> stoich_mobile, stoich_immobile, stoich_all;
-	size_t mobile_species, immobile_species;
-	std::vector<bool> correction;
+	size_t mobile_species, immobile_species; // number of mobile / immobile species in all stages
+	std::vector<bool> correction; //allow correction of a stage
 
 	IKineticContainer& operator=(const IKineticContainer<EXT>&);	//FORBID
 
  protected:
+	/* Add a new stage.
+	 * Parameters:
+	 * stoich: the stoichiometric matrix for all species that participate in the stage.
+	 * n_mobile: the number of mobile species in this stage.
+	 * correct: allow correction in this stage. */
 	void AddStage(const MatrixType& stoich, size_t n_mobile, bool correct){
+		//check parameters
 		if(n_mobile>EXT::rows(stoich)) throw StoichPackException("Illegal values in IKineticContainer::AddStage!");
+		if(EXT::rows(stoich)==0) throw StoichPackException("Cannot add empty stage");
 
-		if(EXT::rows(stoich)+EXT::cols(stoich)==0) throw StoichPackException("Cannot add empty stage");
+		stoich_all.push_back(stoich); //store stoichiometric matrix for all species
 
-		stoich_all.push_back(stoich);
-
-		MatrixPairType tmp = EXT::DivideRows(stoich,n_mobile);
-		stoich_mobile.push_back(tmp.Mobile());
+		//remember: mobile species are stored in front of immobile species
+		MatrixPairType tmp = DivideRows<EXT>(stoich,n_mobile);	//create stoichiometric matrices for mobile/immobile species
+		stoich_mobile.push_back(tmp.Mobile());	//store
 		stoich_immobile.push_back(tmp.Immobile());
 
+		//update counters
 		mobile_species+=n_mobile;
 		immobile_species+=ImmobileSpecies(Stages()-1);
+
 		correction.push_back(correct);
 	}
 
+	/* Add a new stage.
+	 * Parameters:
+	 * stoich_mob: the stoichiometric matrix for all mobile species that participate in the stage.
+	 * stoich_mob: the stoichiometric matrix for all immobile species that participate in the stage.
+	 * correct: allow correction in this stage. */
 	void AddStage(const MatrixType& stoich_mob, const MatrixType& stoich_immob, bool correct){
+		//check parameters
 		if(EXT::cols(stoich_mob)!=EXT::cols(stoich_immob)) throw StoichPackException("Illegal values in IKineticContainer::AddStage!");
+
+		//remember: mobile species are stored in front of immobile species
+		//combine stoichiometric matrices and call other AddStage routine
 		AddStage(EXT::CombineRows(stoich_mob,stoich_immob),EXT::rows(stoich_mob),correct);
 	}
 
  public:
 	IKineticContainer() : mobile_species(0), immobile_species(0) {}
 
+	/* getters */
 	size_t Stages() const { return stoich_all.size(); }
 
 	const std::vector<MatrixType>& StoichiometricMatrices() const { return stoich_all; }
@@ -63,7 +86,7 @@ namespace StoichPack{
 
 	size_t Reactions(size_t stage) const { assert(stage<Stages()); return EXT::cols(stoich_all[stage]); }
 
-  //debug
+	//debug
 	bool CheckSize(const VectorType& x) const {
 		return EXT::size(x)==AllSpecies();
 	}
@@ -73,7 +96,6 @@ namespace StoichPack{
 	bool CheckSizeImmobile(const VectorType& x) const {
 		return EXT::size(x)==ImmobileSpecies();
 	}
-
 
 	bool CheckSize(const VectorType& x, const VectorType& y) const {
 		return EXT::size(x)==MobileSpecies() && EXT::size(y)==ImmobileSpecies();
@@ -108,8 +130,14 @@ namespace StoichPack{
 		return CheckSize(x.Mobile(),x.Immobile());
 	}
 
+	/* FromOriginal: transform concentrations from the original presentation to a transformed presentation
+	 * needed for the specific container. */
+
+	/* Provide a function to transform a vector containing all concentrations. */
 	virtual void FromOriginalImpl(const VectorType& all, VectorArrayType& ret) const =0;
+	/* Provide a function to transform a vector containing all mobile concentrations. */
 	virtual void FromOriginalMobileImpl(const VectorType& mobile, VectorArrayType& ret) const =0;
+	/* Provide a function to transform a vector containing all immobile concentrations. */
 	virtual void FromOriginalImmobileImpl(const VectorType& immobile, VectorArrayType& ret) const=0;
 
 	VectorArrayType FromOriginal(const VectorType& all) const {
@@ -136,8 +164,15 @@ namespace StoichPack{
 	}
 	VectorArrayPairType FromOriginal(const VectorPairType& all) const { return FromOriginal(all.Mobile(),all.Immobile()); }
 
+	/* ToOriginal: transform a arrays of vectors (1 for each stage) to the original presentation. */
+
+	/* Provide a function to transform vectors containing all concentrations. */
 	virtual void ToOriginalImpl(const VectorArrayType& all, VectorType& orig) const =0;
+
+	/* Provide a function to transform vectors containing only mobile concentrations. */
 	virtual void ToOriginalMobileImpl(const VectorArrayType& mobile, VectorType& orig) const =0;
+
+	/* Provide a function to transform vectors containing only immobile concentrations. */
 	virtual void ToOriginalImmobileImpl(const VectorArrayType& immobile, VectorType& orig) const =0;
 
 	VectorType ToOriginal(const VectorArrayType& all) const {
@@ -162,26 +197,44 @@ namespace StoichPack{
 		return ToOriginal(all.Mobile(),all.Immobile());
 	}
 
+	/* ReactionRates, SubReactionRates, DiffReactionRates and DiffSubReactionRates:
+	 * Evaluate vectors with reaction rates and the respective Jacobians. */
+
+	/* Provide a function to evaluate all reaction rates of a stage, given the values of all concentrations (original presentation). */
 	virtual VectorType ReactionRatesImpl1(const VectorType& all, size_t stage) const =0;
-	virtual VectorType ReactionRatesImpl2(const VectorPairType& all, size_t stage) const =0;
+	/* Provide a funtion that only evaluates the reactions speciefied in I. */
 	virtual VectorType SubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const =0;
+	/* Provide a function to evaluate all reaction rates of a stage, given the values of all mobile concentrations
+	 * and all immobile concentrations separately (original presentation). */
+	virtual VectorType ReactionRatesImpl2(const VectorPairType& all, size_t stage) const =0;
+	/* Provide a funtion that only evaluates the reactions speciefied in I. */
 	virtual VectorType SubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const =0;
 
+	/* Provide a function for the Jacobian of ReactionRatesImpl1. */
 	virtual MatrixType DiffReactionRatesImpl1(const VectorType& all, size_t stage) const =0;
-	virtual MatrixPairType DiffReactionRatesImpl2(const VectorPairType& all, size_t stage) const =0;
+	/* Provide a function for the Jacobian of SubReactionRatesImpl1. */
 	virtual MatrixType DiffSubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const=0;
+	/* Provide a function for the Jacobian of ReactionRatesImpl2. */
+	virtual MatrixPairType DiffReactionRatesImpl2(const VectorPairType& all, size_t stage) const =0;
+	/* Provide a function for the Jacobian of SubReactionRatesImpl2. */
 	virtual MatrixPairType DiffSubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const=0;
 
+	/* ConstSpeciesRates: Provide functions for right-hand side contributions that do not depend on concentrations of this stage
+	 * (e.g. source terms). */
 	virtual VectorType ConstSpeciesRatesImpl1(const VectorType& all, size_t stage) const =0;
 	virtual VectorPairType ConstSpeciesRatesImpl2(const VectorPairType& all, size_t stage) const =0;
 	virtual VectorType ConstMobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const =0;
 	virtual VectorType ConstImmobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const =0;
 
+	/* Provide functions for correction of transformed values, i.e. modify the values such that the original presentation
+	 * does not contain negative entries.
+	 * Caution: It is not allowed to change values for which the corresponding entry in allowed is 0. */
 	virtual bool ApplyMobileCorrectionImpl(VectorArrayType& mobile, const VectorArrayType& allowed) const =0;
 	virtual bool ApplyImmobileCorrectionImpl(VectorArrayType& immobile, const VectorArrayType& allowed) const =0;
 	virtual bool ApplyCorrectionImpl(VectorArrayType& all, const VectorArrayType& allowed) const =0;
 
-	virtual const std::vector<Species>& Participants() const =0;
+	/* Provide a function that returns all biochemical species of the underlying biochemical problem. The order must not be changed! */
+	virtual const std::vector<InitializedSpecies>& Participants() const =0;
 
 	//virtual MatrixType RateStructure(size_t stage, const std::vector<size_t>& I) const =0;
 	//virtual MatrixType RateStructure(size_t stage) const =0;
