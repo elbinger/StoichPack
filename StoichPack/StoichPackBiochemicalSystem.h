@@ -24,13 +24,12 @@ private:
 
 public:
 	void AddSpecies(const std::string& name, species_type type){ species.Add(name,type); }
-	void AddSpecies(const std::vector<std::string>& names , const std::vector<species_type>& types) {
-		if(names.size()!=types.size()) throw StoichPackException("different sizes");
-		for(size_t i=0;i<names.size();++i) AddSpecies(names[i],types[i]);
-	}
 	void AddSpecies(const std::vector<std::string>& names, species_type type){
-		for(size_t i=0;i<names.size();++i) AddSpecies(names[i],type);
-	}		
+		for(auto n : names) AddSpecies(n,type);
+	}
+	void AddSpecies(const std::initializer_list<std::string>& names, species_type type) {
+		for(auto n : names) AddSpecies(n,type);
+	}
 
 	void AddKineticReaction(KPTR r){ kinetic_reactions.push_back(SHARED_KPTR(r)); }
 

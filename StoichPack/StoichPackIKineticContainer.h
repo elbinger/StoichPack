@@ -258,9 +258,17 @@ namespace StoichPack{
 		return ReactionRatesImpl2(ToOriginal(mobile,immobile),stage);
 	}
 
+	VectorType ReactionRates(const VectorArrayPairType& all, size_t stage) const {
+		return ReactionRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	VectorType SubReactionRates(const VectorArrayType& mobile, const VectorArrayType& immobile,
 	                                const std::vector<size_t>& I, size_t stage) const {
 		return SubReactionRatesImpl2(ToOriginal(mobile,immobile),I,stage);
+	}
+
+	VectorType SubReactionRates(const VectorArrayPairType& all, const std::vector<size_t>& I, size_t stage) const {
+		return SubReactionRates(all.Mobile(),all.Immobile(),I,stage);
 	}
 
 	MatrixType DiffReactionRates(const VectorArrayType& all, size_t stage) const {
@@ -275,9 +283,17 @@ namespace StoichPack{
 		return DiffReactionRatesImpl2(ToOriginal(mobile,immobile),stage);
 	}
 
+	MatrixPairType DiffReactionRates(const VectorArrayPairType& all, size_t stage) const {
+		return DiffReactionRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	MatrixPairType DiffSubReactionRates(const VectorArrayType& mobile, const VectorArrayType& immobile,
 	                                            const std::vector<size_t>& I, size_t stage) const {
 		return DiffSubReactionRatesImpl2(ToOriginal(mobile,immobile),I,stage);
+	}
+
+	MatrixPairType DiffSubReactionRates(const VectorArrayPairType& all, const std::vector<size_t>& I, size_t stage) const {
+		return DiffSubReactionRates(all.Mobile(),all.Immobile(),I,stage);
 	}
 
 	VectorType ConstSpeciesRates(const VectorArrayType& all, size_t stage) const {
@@ -288,14 +304,26 @@ namespace StoichPack{
 		return ConstSpeciesRatesImpl2(ToOriginal(mobile,immobile),stage);
 	}
 
+	VectorPairType ConstSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return ConstSpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	VectorType ConstMobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		return ConstMobileSpeciesRatesImpl(ToOriginal(mobile,immobile),stage);
+	}
+
+	VectorType ConstMobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return ConstMobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
 	}
 
 	VectorType ConstImmobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		return ConstImmobileSpeciesRatesImpl(ToOriginal(mobile,immobile),stage);
 	}
 	
+	VectorType ConstImmobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return ConstImmobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	VectorType SpeciesRates(const VectorArrayType& all, size_t stage) const {
 		const VectorType orig = ToOriginal(all);
 		return stoich_all[stage]*ReactionRatesImpl1(orig,stage)+ConstSpeciesRatesImpl1(orig,stage);
@@ -308,14 +336,26 @@ namespace StoichPack{
 		return VectorPairType(stoich_mobile[stage]*rrates+crates.Mobile(), stoich_immobile[stage]*rrates+crates.Immobile());
 	}
 
+	VectorPairType SpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return SpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	VectorType MobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		const VectorPairType orig = ToOriginal(mobile,immobile);
 		return stoich_mobile[stage]*ReactionRatesImpl2(orig,stage)+ConstMobileSpeciesRatesImpl(orig,stage);
 	}
 
+	VectorType MobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return MobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	VectorType ImmobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile, size_t stage) const {
 		const VectorPairType orig = ToOriginal(mobile,immobile);
 		return stoich_immobile[stage]*ReactionRatesImpl2(orig,stage)+ConstImmobileSpeciesRatesImpl(orig,stage);
+	}
+
+	VectorType ImmobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return ImmobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
 	}
 
 	MatrixType DiffSpeciesRates(const VectorArrayType& all, size_t stage) const {
@@ -328,14 +368,27 @@ namespace StoichPack{
 		                      MatrixPairType(stoich_immobile[stage]*tmp.Mobile(),stoich_immobile[stage]*tmp.Immobile()));
 	}
 
+	MatrixQuadType DiffSpeciesRates(const VectorArrayPairType& all, size_t stage) const {
+		return DiffSpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
+
 	MatrixPairType DiffMobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile,size_t stage) const{
 		MatrixPairType tmp = DiffReactionRatesImpl2(ToOriginal(mobile,immobile),stage);
 		return MatrixPairType(MatrixPairType(stoich_mobile[stage]*tmp.Mobile(),stoich_mobile[stage]*tmp.Immobile()));
 	}
 
+	MatrixPairType DiffMobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const{
+		return DiffMobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
+	}
+
 	MatrixPairType DiffImmobileSpeciesRates(const VectorArrayType& mobile, const VectorArrayType& immobile,size_t stage) const{
 		MatrixPairType tmp = DiffReactionRatesImpl2(ToOriginal(mobile,immobile),stage);
 		return MatrixPairType(MatrixPairType(stoich_immobile[stage]*tmp.Mobile(),stoich_immobile[stage]*tmp.Immobile()));
+	}
+
+	MatrixPairType DiffImmobileSpeciesRates(const VectorArrayPairType& all, size_t stage) const{
+		return DiffImmobileSpeciesRates(all.Mobile(),all.Immobile(),stage);
 	}
 
 	bool ApplyCorrection(VectorArrayType& all, size_t stage) const {

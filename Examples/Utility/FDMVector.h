@@ -5,12 +5,10 @@
 
 class FDMVector : public Eigen::VectorXd {
 private:
-	const size_t species;
-	const FDMMesh& mesh;
+	size_t species;
 public:
-	FDMVector(size_t s, const FDMMesh& m) : Eigen::VectorXd(s*m.Nodes()), species(s), mesh(m){}
+	FDMVector(size_t s, const FDMMesh& m) : Eigen::VectorXd(s*m.Nodes()), species(s){}
 	size_t Species() const { return species; }
-	const FDMMesh& Mesh() const { return mesh; }
 
 	Eigen::VectorXd GetSub(int i) const {
 		return this->block(i*species,0,species,1);

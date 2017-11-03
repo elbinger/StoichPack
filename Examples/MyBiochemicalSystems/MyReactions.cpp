@@ -109,8 +109,8 @@ vector<sp_scalar> MassActionLaw::DiffRateImpl(const vector<sp_scalar>& c) const 
 	const vector<sp_scalar>& coeff = this->Coefficients();
 	const size_t s=c.size();
 	for(size_t i=0;i<s;++i) {
-		if(coeff[i]>0) result[i]=vf*coeff[i]*pow(c[i],coeff[i]);
-		else result[i]=vb*coeff[i]*pow(c[i],abs(coeff[i]));
+		if(coeff[i]>0) result[i]=vf*coeff[i]*pow(c[i],coeff[i]-1);
+		else result[i]=vb*coeff[i]*pow(c[i],abs(coeff[i])-1);
 	}
 	return result;
 }

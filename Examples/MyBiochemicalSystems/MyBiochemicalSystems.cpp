@@ -7,9 +7,8 @@ BiochemicalSystem<> System1(){
 	r.AddKineticReaction(new MichaelisMenten("A","B",1,1));
 	r.AddKineticReaction(new MichaelisMenten("B","C",1,1));
 
-	r.AddSpecies("A",species_type::mobile);
+	r.AddSpecies({"A", "C"},species_type::mobile);
 	r.AddSpecies("B",species_type::immobile);
-	r.AddSpecies("C",species_type::mobile);
 
 	return r;
 }
@@ -116,12 +115,12 @@ vector<SpatialModifier> GetDefaultModifiers(const string& name){
 	else throw StoichPackException(string("Cound not find system ")+name);
 }
 	
-vector<sp_scalar> GetDefaultValuesImpl(const string& name, const InitializedBiochemicalSystem<>& system, const vector<sp_scalar>& X){
+vector<sp_scalar> GetDefaultValuesImpl(const string& name, const vector<InitializedSpecies>& participants, const vector<sp_scalar>& X){
 	vector<sp_scalar> result;
 
 	const vector<SpatialModifier> mod = GetDefaultModifiers(name);
 
-	for(const InitializedSpecies& s : system.Participants()){
+	for(auto s : participants){
 		vector<SpatialModifier>::const_iterator it = std::find(mod.begin(),mod.end(),s.Name());
 		if(it==mod.end()) result.push_back(0);
 		else result.push_back(it->GetValue(X));

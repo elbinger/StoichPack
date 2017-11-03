@@ -11,9 +11,9 @@ class NewtonReturn{
  NewtonReturn(bool conv, size_t it, double r) : converged(conv), iterations(it), residual(r) {}
 };
 
-template<typename JacobiType, typename ProblemType>
-NewtonReturn Newton(EXT::VectorType& c, JacobiType& J, ProblemType& P, double epsilon, size_t maxiterations){
-	EXT::VectorType R=EXT::CreateVector(EXT::size(c));
+template<typename VectorType, typename JacobiType, typename ProblemType>
+NewtonReturn Newton(VectorType& c, JacobiType& J, ProblemType& P, double epsilon, size_t maxiterations){
+	VectorType R=c;
 	P.Residual(c,R);
 	double r=R.norm();
 	size_t it=0;

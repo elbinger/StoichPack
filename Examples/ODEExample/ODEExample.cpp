@@ -68,7 +68,7 @@ int main(){
 	const BiochemicalSystem<> system = LoadSystem(ODEConstants::system); //load specified system
 	BasicKineticContainer<EXT> S(system);
 
-	EXT::VectorType c =GetDefaultValues<EXT>(ODEConstants::system,S.Problem()); //load intial values
+	EXT::VectorType c =GetDefaultValues<EXT>(ODEConstants::system,S); //load intial values
 
 	cout<<"Loaded and initialized the following system:"<<endl<<S.Problem()<<endl; //print specified problem
 	cout<<endl<<"c(0)="<<endl<<c<<endl<<endl; //print intital values
