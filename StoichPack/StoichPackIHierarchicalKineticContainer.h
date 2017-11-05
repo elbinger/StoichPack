@@ -10,171 +10,158 @@
 
 namespace StoichPack{
 
-/* class BaseStorage: stroage for underlying container. */
-template<typename EXT, typename BT>
-class BaseStorage{
+ template<typename EXT>
+ class HierarchicalStageInfo {
+ public:
+	typedef typename EXT::MatrixType MatrixType;
+	virtual size_t Stages() const = 0;
+	virtual size_t SubStage(size_t stage) const = 0;
+	virtual std::vector<size_t> SubReactions(size_t stage) const = 0;
+	virtual MatrixType StoichiometricMatrix(size_t stage) const = 0;	
+	virtual MatrixType ToBase(size_t stage) const = 0;
+	virtual MatrixType FromBaseGlobal(size_t stage) const = 0;
+	virtual size_t MobileSpecies(size_t stage) const =0;
+	virtual bool ForceNoCorrection(size_t stage) const =0;
+	virtual const IKineticContainer<EXT>& Base() const = 0;
+
+	StageInfoArray<EXT> GetStageInfoArray() const {
+		std::vector<BasicStageInfo<EXT> > result;
+		for(size_t i=0;i<Stages();++i){
+			bool correction = (!ForceNoCorrection(i)) && Base().Global(SubStage(i)).Correct();
+			const MatrixType toOriginal = Base().Global(SubStage(i)).ToOriginal()*ToBase(i);
+			const MatrixType fromOriginal = FromBaseGlobal(i)*Base().Global(SubStage(i)).FromOriginal();
+			BasicStageInfo<EXT> tmp(StoichiometricMatrix(i),toOriginal,fromOriginal,MobileSpecies(i),Base().MobileSpecies(),correction);
+			result.push_back(tmp);
+		}
+		return StageInfoArray<EXT>(result);
+	}
+
+	MatrixType FromBaseMobile(size_t stage) const {
+		return SplitBlocks<EXT>(FromBaseGlobal(stage),MobileSpecies(stage),Base().Global(SubStage(stage)).MobileSpecies()).Mobile();
+	}
+	MatrixType FromBaseImmobile(size_t stage) const {
+		return SplitBlocks<EXT>(FromBaseGlobal(stage),MobileSpecies(stage),Base().Global(SubStage(stage)).MobileSpecies()).Immobile();
+	}
+
+	virtual ~HierarchicalStageInfo() {}
+
+ private:
+	MatrixPair<EXT> BlocksFrom(size_t stage) const {
+		return SplitBlocks<EXT>(FromBaseGlobal(stage),MobileSpecies(),Base().Global(SubStage(stage)).MobileSpecies());
+	}
+ };
+
+ /* class BaseStorage: stroage for underlying container. */
+ template<typename EXT, typename BT>
+ class BaseStorage{
 	private:
 	const BT storage;
 	public:
 	BaseStorage(const BT& x) : storage(x) {}
 	const BT& get() const { return storage; }
-};
+ };
 
-/* specialization for IKineticContainer<EXT>: storage only possible as pointer */
-template<typename EXT>
-class BaseStorage<EXT,IKineticContainer<EXT> >{
+ /* specialization for IKineticContainer<EXT>: storage only possible as pointer */
+ template<typename EXT>
+ class BaseStorage<EXT,IKineticContainer<EXT> >{
 	private:
 	const std::shared_ptr<IKineticContainer<EXT> > storage;
 	public:
 	BaseStorage(const IKineticContainer<EXT>& x) : storage(x.copy()) {}
 	const IKineticContainer<EXT>& get() const { return *storage; }
-};
+ };
 
-/* class IHierarchicalKineticContainer: interface for hierarchical containers. */
-template<typename EXT, typename BT = IKineticContainer<EXT> >
-class IHierarchicalKineticContainer : public IKineticContainer<EXT>{
+ /* class IHierarchicalKineticContainer: interface for hierarchical containers. */
+ template<typename EXT, typename BT = IKineticContainer<EXT> >
+ class IHierarchicalKineticContainer : public IKineticContainer<EXT>{
+ public:
  	typedef typename EXT::VectorType VectorType;
-	typedef typename EXT::VectorPairType VectorPairType;
 	typedef typename EXT::VectorArrayType VectorArrayType;
-	typedef typename EXT::VectorArrayPairType VectorArrayPairType;
 	typedef typename EXT::MatrixType MatrixType;
-private:
-	std::vector<size_t> substages, substages_first;
-	const BaseStorage<EXT,BT> base;
 
-	void UpdateSubStages(size_t subs) {
-		assert(subs<Base().Stages());
-		if(substages.size()==0){
-			assert(subs==0);
-			substages_first.push_back(0);
-		} else if(substages.back()!=subs){
-			assert(substages.back()==subs-1);
-			substages_first.push_back(Stages());
-		}
-		substages.push_back(subs);
+	/* Provide a function to evaluate all reaction rates of a stage, given the values of all concentrations (original presentation). */
+	VectorType ReactionRatesImpl(const VectorType& all, size_t stage) const {
+		return Base().SubReactionRatesImpl(all,subreactions[stage],substage[stage]);
 	}
-
-	//FORBID
-	IHierarchicalKineticContainer();
-protected:
-	IHierarchicalKineticContainer(const BT& bt) : base(bt) {}
-
-	void Finish() {
-		assert(substages_first.size()==Base().Stages());
-		substages_first.push_back(Stages());
+	/* Provide a funtion that only evaluates the reactions speciefied in I. */
+	VectorType SubReactionRatesImpl(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
+		return Base().SubReactionRatesImpl(all,GetSub(I,stage),substage[stage]);
+	}
+	/* Provide a function to evaluate all reaction rates of a stage, given the values of all mobile concentrations
+	 * and all immobile concentrations separately (original presentation). */
+	VectorType ReactionRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
+		return Base().SubReactionRatesImpl(mobile,immobile,subreactions[stage],substage[stage]);
+	}
+	/* Provide a funtion that only evaluates the reactions speciefied in I. */
+	VectorType SubReactionRatesImpl(const VectorType& mobile, const VectorType& immobile,
+	                                const std::vector<size_t>& I, size_t stage) const {
+		return Base().SubReactionRatesImpl(mobile,immobile,GetSub(I,stage),substage[stage]);
 	}
 
-	void AddStage(const MatrixType& stoich, size_t n_mobile, size_t subs, bool correction){
-		UpdateSubStages(subs);
-		IKineticContainer<EXT>::AddStage(stoich,n_mobile,correction);
+	/* Provide a function for the Jacobian of ReactionRatesImpl. */
+	MatrixType DiffReactionRatesImpl(const VectorType& all, size_t stage) const {
+		return Base().DiffSubReactionRatesImpl(all,subreactions[stage],substage[stage]);
 	}
-
-	void AddStage(const MatrixType& stoich_mob, const MatrixType& stoich_immob, size_t subs, bool correction){
-		UpdateSubStages(subs);
-		IKineticContainer<EXT>::AddStage(stoich_mob,stoich_immob, correction);
+	/* Provide a function for the Jacobian of SubReactionRatesImpl. */
+	MatrixType DiffSubReactionRatesImpl(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
+		return Base().DiffSubReactionRatesImpl(all,GetSub(I,stage),substage[stage]);
 	}
-
-	size_t SubStage(size_t i) const { assert(i<Stages()); return substages[i]; }
-	size_t SubStageFirst(size_t i) const { assert(i<substages_first.size()); return substages_first[i]; }
-	const BT& Base() const { return base.get(); }
-
-public:
-	using IKineticContainer<EXT>::Stages;
-	using IKineticContainer<EXT>::CheckSize;
-
-	virtual void FromBaseImpl(const VectorArrayType& all, VectorArrayType& ret) const =0;
-	virtual void FromBaseMobileImpl(const VectorArrayType& mobile, VectorArrayType& ret) const =0;
-	virtual void FromBaseImmobileImpl(const VectorArrayType& immobile, VectorArrayType& ret) const=0;
-
-	VectorArrayType FromBase(const VectorArrayType& all) const {
-		VectorArrayType ret = EXT::ReserveVectorArray(Stages());
-		FromBaseImpl(all,ret);
-		return ret;
+	/* Provide a function for the Jacobian of ReactionRatesImpl. */
+	MatrixPair<EXT> DiffReactionRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
+		return Base().DiffSubReactionRatesImpl(mobile,immobile,subreactions[stage],substage[stage]);
 	}
-
-	VectorArrayType FromBaseMobile(const VectorArrayType& mobile) const {
-		VectorArrayType ret = EXT::ReserveVectorArray(Stages());
-		FromBaseMobileImpl(mobile,ret);
-		return ret;
+	/* Provide a function for the Jacobian of SubReactionRatesImpl. */
+	MatrixPair<EXT> DiffSubReactionRatesImpl(const VectorType& mobile, const VectorType& immobile,
+	                                         const std::vector<size_t>& I, size_t stage) const{
+		return Base().DiffSubReactionRatesImpl(mobile,immobile,GetSub(I,stage),substage[stage]);
 	}
-	VectorArrayType FromBaseImmobile(const VectorArrayType& immobile) const {
-		VectorArrayType ret = EXT::ReserveVectorArray(Stages());
-		FromBaseImmobileImpl(immobile,ret);
-		return ret;
-	}
-	void FromOriginalImpl(const VectorType& all, VectorArrayType& ret) const {
-		const VectorArrayType fbase=Base().FromOriginal(all);
-		FromBaseImpl(fbase,ret);
-	}
-		
-	void FromOriginalMobileImpl(const VectorType& mobile, VectorArrayType& ret) const {
-		const VectorArrayType fbase=Base().FromOriginalMobile(mobile);
-		FromBaseMobileImpl(fbase,ret);
-	}
-
-	void FromOriginalImmobileImpl(const VectorType& immobile, VectorArrayType& ret) const{
-		const VectorArrayType fbase=Base().FromOriginalImmobile(immobile);
-		FromBaseImmobileImpl(fbase,ret);
-	}
-	
-	virtual void ToBaseImpl(const VectorArrayType& all, VectorArrayType& ret) const =0;
-	virtual void ToBaseMobileImpl(const VectorArrayType& mobile, VectorArrayType& ret) const=0;
-	virtual void ToBaseImmobileImpl(const VectorArrayType& immobile, VectorArrayType& ret) const=0;
-
-	VectorArrayType ToBase(const VectorArrayType& all) const {
-		VectorArrayType ret=EXT::ReserveVectorArray(Base().Stages());
-		ToBaseImpl(all,ret);
-		return ret;
-	}
-	VectorArrayType ToBaseMobile(const VectorArrayType& mobile) const {
-		VectorArrayType ret=EXT::ReserveVectorArray(Base().Stages());
-		ToBaseMobileImpl(mobile,ret);
-		return ret;
-	}
-	VectorArrayType ToBaseImmobile(const VectorArrayType& immobile) const {
-		VectorArrayType ret=EXT::ReserveVectorArray(Base().Stages());
-		ToBaseImmobileImpl(immobile,ret);
-		return ret;
-	}
-
-	VectorArrayPairType ToBase(const VectorArrayType& mobile, const VectorArrayType& immobile) const {
-		const size_t s=Base().Stages();
-		VectorArrayPairType ret(EXT::ReserveVectorArray(s),EXT::ReserveVectorArray(s));
-		ToBaseMobileImpl(mobile,ret.Mobile());
-		ToBaseImmobileImpl(immobile,ret.Immobile());
-		return ret;
-	}
-
-	VectorArrayPairType ToBase(const VectorArrayPairType& all) const {
-		return ToBase(all.Mobile(),all.Immobile());
-	}
-
-	void ToOriginalImpl(const VectorArrayType& all, VectorType& ret) const {
-		Base().ToOriginalImpl(ToBase(all),ret);
-	}
-	void ToOriginalMobileImpl(const VectorArrayType& mobile, VectorType& ret) const {
-		Base().ToOriginalMobileImpl(ToBaseMobile(mobile),ret);
-	}
-	void ToOriginalImmobileImpl(const VectorArrayType& immobile, VectorType& ret) const {
-		Base().ToOriginalImmobileImpl(ToBaseImmobile(immobile),ret);
-	}
-	
-	virtual MatrixType MobileBaseTransformation() const =0;
-	virtual MatrixType ImmobileBaseTransformation() const =0;
-	virtual MatrixType BaseTransformation() const =0;
-	
-	MatrixType MobileTransformation() const { return Base().MobileTransformation()*MobileBaseTransformation(); }
-	MatrixType ImmobileTransformation() const { return Base().ImmobileTransformation()*ImmobileBaseTransformation(); }
-	MatrixType Transformation() const { return Base().Transformation()*BaseTransformation(); }
-
 
 	const std::vector<InitializedSpecies>& Participants() const { return Base().Participants(); }
 
-	virtual ~IHierarchicalKineticContainer() {}
+	/*the following pure virtual functions need to be implemented:
+	virtual VectorType ConstSpeciesRatesImpl(const VectorType& all, size_t stage) const =0;
+	virtual VectorPair<EXT> ConstSpeciesRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const =0;
+	virtual MatrixType RateStructure(size_t stage) const = 0;
+	virtual IKineticContainer<EXT>* copy() const =0*/
+
+ protected:
+	const BT& Base() const { return base.get(); }
+	const std::vector< std::vector<size_t> >& SubReactions() const { return subreactions; }
+	const std::vector<size_t>& SubStages() const { return substage; }
+	const std::vector<MatrixType>& FromBaseGlobal() const { return fromBaseGlobal; }
+	const std::vector<MatrixType>& FromBaseMobile() const { return fromBaseMobile; }
+	const std::vector<MatrixType>& FromBaseImmobile() const { return fromBaseImmobile; }
+
+	std::vector<size_t> GetSub(const std::vector<size_t>& index, size_t stage) const {
+		std::vector<size_t> result;
+		result.reserve(index.size());
+		for(size_t i : index) result.push_back(subreactions[stage][i]);
+		return result;
+	}
+
+	IHierarchicalKineticContainer(const HierarchicalStageInfo<EXT>& info, const BT& Base)
+	                              : IKineticContainer<EXT>(info.GetStageInfoArray()), base(Base) {
+		for(size_t i=0;i<this->Stages();++i){
+			subreactions.push_back(info.SubReactions(i));
+			substage.push_back(info.SubStage(i));
+
+			fromBaseGlobal.push_back(info.FromBaseGlobal(i));
+			fromBaseMobile.push_back(info.FromBaseMobile(i));
+			fromBaseImmobile.push_back(info.FromBaseImmobile(i));
+		}
+	}
+ private:
+	const BaseStorage<EXT,BT> base;
+	std::vector<std::vector<size_t> > subreactions;
+	std::vector<size_t> substage;
+	std::vector<MatrixType> fromBaseGlobal, fromBaseMobile,fromBaseImmobile;
+
+	IHierarchicalKineticContainer(); //FORBID
 };
 
-template<typename EXT, typename BT>
-using IHierarchicalStoichiometry = IHierarchicalKineticContainer<EXT,BT>;
+ //ensure backward compatibility for older naming convention
+ template<typename EXT, typename BT>
+ using IHierarchicalStoichiometry = IHierarchicalKineticContainer<EXT,BT>;
 }
 
 #endif

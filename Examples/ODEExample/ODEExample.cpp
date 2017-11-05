@@ -22,7 +22,6 @@ public:
 	const EXT::VectorType& cold;
 	size_t stage;
 	void Residual(EXT::VectorType& c, EXT::VectorType& R){
-		S.ApplyCorrection(all,stage);
 		R = (c-cold)/ODEConstants::dt-S.SpeciesRates(all,stage);
 	}
 	void Jacobi(const EXT::VectorType& c, EXT::MatrixType& J){
@@ -39,14 +38,14 @@ public:
 
 template<typename T>
 EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
-	EXT::VectorArrayType c = S.FromOriginal(c0);
+	EXT::VectorArrayType c = S.FromOriginalGlobal(c0);
 	EXT::VectorArrayType cold = c;
 	for(double t = 0;t<=ODEConstants::T;){
 		t+=ODEConstants::dt;
 		cout<<"| From "<<t-ODEConstants::dt<<" to "<<t<<":"<<endl;
 		for(size_t stage=0;stage<S.Stages();++stage){
 			cout<<"| | Stage "<<stage<<":"<<endl;
-			const size_t species = S.AllSpecies(stage);
+			const size_t species = S.GlobalSpecies(stage);
 			ODENewtonProblem<T> problem(S,c,cold[stage],stage);
 			EXT::MatrixType J(species,species);
 			NewtonReturn result=Newton(c[stage],J,problem,
@@ -60,7 +59,7 @@ EXT::VectorType SolveProblem(const T& S, const EXT::VectorType& c0){
 		}
 		cold=c;
 	}
-	return S.ToOriginal(c);
+	return S.ToOriginalGlobal(c);
 }
 		
 int main(){
@@ -75,7 +74,8 @@ int main(){
 
 	//preprocess and solve
 	if(ODEConstants::preprocessing==PreprocessingType::ONESIDED){
-		OneSidedCouplings<EXT,BasicKineticContainer<EXT> > tmp(S); //preprocessing
+		OneSidedCouplingsStageArray<EXT> info(S);
+		OneSidedCouplings<EXT,BasicKineticContainer<EXT> > tmp(info,S); //preprocessing
 		c=SolveProblem(tmp,c); //solve preprocessed problem, return values in original form
 	} else if(ODEConstants::preprocessing==PreprocessingType::REDUCED) {
 		ReducedKineticContainer<EXT,BasicKineticContainer<EXT> > tmp(S); //preprocessing

@@ -36,15 +36,15 @@ public:
 		}
 	}
 
-	void SetSub(int i, const EXT::VectorArrayPairType& all){
+	void SetSub(int i, const VectorArrayPair<EXT>& all){
 		for(size_t stage=0;stage<mobile.size();++stage) {
 			mobile[stage].SetSub(i,all.Mobile()[stage]);
 			immobile[stage].SetSub(i,all.Immobile()[stage]);
 		}
 	}
 
-	EXT::VectorArrayPairType GetSub(int i) const {
-		EXT::VectorArrayPairType result(EXT::ReserveVectorArray(mobile.size()),EXT::ReserveVectorArray(mobile.size()));
+	VectorArrayPair<EXT> GetSub(int i) const {
+		VectorArrayPair<EXT> result(EXT::ReserveVectorArray(mobile.size()),EXT::ReserveVectorArray(mobile.size()));
 		for(size_t stage=0;stage<mobile.size();++stage){
 			EXT::PushBack(result.Mobile(),mobile[stage].GetSub(i));
 			EXT::PushBack(result.Immobile(),immobile[stage].GetSub(i));
@@ -62,7 +62,7 @@ public:
 class PDENewtonSubProblem{
 public:
 	const IKineticContainer<EXT>& S;
-	EXT::VectorArrayPairType& all;
+	VectorArrayPair<EXT>& all;
 	const EXT::VectorType& cold;
 	size_t stage;
 
@@ -76,7 +76,7 @@ public:
 	EXT::VectorType Solve(const EXT::MatrixType& J, const EXT::VectorType& R) const {
 		return J.fullPivLu().solve(R);
 	}
-	PDENewtonSubProblem(const IKineticContainer<EXT>& container, EXT::VectorArrayPairType& a, const EXT::VectorType& old, size_t s)
+	PDENewtonSubProblem(const IKineticContainer<EXT>& container, VectorArrayPair<EXT>& a, const EXT::VectorType& old, size_t s)
 	                    : S(container), all(a), cold(old), stage(s) {}
 };
 
@@ -88,7 +88,7 @@ public:
 	size_t stage;
 	const FDMMesh& mesh;
 
-	EXT::VectorType Stencil(int i, const EXT::VectorArrayPairType& data){
+	EXT::VectorType Stencil(int i, const VectorArrayPair<EXT>& data){
 		const sp_scalar tmp = mesh.h*mesh.h;
 		EXT::VectorType result = pow(2.,mesh.dimension)/tmp*data.Mobile()[stage];
 		const vector<int> neighbours = mesh.Neighbours(i);
@@ -98,9 +98,9 @@ public:
 
 	void Residual(FDMVector& c, FDMVector& R){
 		for(int i=0;i<mesh.Nodes();++i){
-			EXT::VectorArrayPairType local = all.GetSub(i);
+			VectorArrayPair<EXT> local = all.GetSub(i);
 			//S.ApplyMobileCorrection(local.Mobile(),stage);
-			EXT::VectorArrayPairType localold = allold.GetSub(i);
+			VectorArrayPair<EXT> localold = allold.GetSub(i);
 
 			if(S.ImmobileSpecies(stage)!=0){
 				PDENewtonSubProblem sub(S,local,localold.Immobile()[stage],stage);
@@ -126,8 +126,8 @@ public:
 
 	void Jacobi(const FDMVector& c, FDMSparseMatrix& J){
 		for(int i=0;i<mesh.Nodes();++i){
-			EXT::VectorArrayPairType local = all.GetSub(i);
-			const EXT::MatrixQuadType diff = S.DiffSpeciesRates(local,stage);
+			VectorArrayPair<EXT> local = all.GetSub(i);
+			const MatrixQuad<EXT> diff = S.DiffSpeciesRates(local,stage);
 			const EXT::MatrixType& J11 = diff.Mobile().Mobile();
 			const EXT::MatrixType& J12 = diff.Mobile().Immobile();
 			const EXT::MatrixType& J21 = diff.Immobile().Mobile();
@@ -147,7 +147,7 @@ public:
 };
 
 FDMVector FDMToOriginal(const IKineticContainer<EXT>& S, const FDMVectorArrayPair& c, const FDMMesh& mesh){
-	FDMVector result(S.AllSpecies(),mesh);
+	FDMVector result(S.GlobalSpecies(),mesh);
 	for(int i=0;i<mesh.Nodes();++i)
 		result.SetSub(i,Combine<EXT>(S.ToOriginal(c.GetSub(i))));
 

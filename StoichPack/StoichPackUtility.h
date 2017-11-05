@@ -9,22 +9,10 @@
 #include <algorithm>
 #include <cassert>
 #include "StoichPackDefines.h"
+#include "StoichPackMultiType.h"
 
 namespace StoichPack{
- /* A pair class. The beahaviour is the same as for std::pair, except that first becomes Mobile() and second becomes
-  * Immobile(). This increases readability of the code. */
- template<typename T>
- class Pair{
- private:
-	T mobile, immobile;
- public:
-	Pair(const T& x, const T& y) : mobile(x), immobile(y) {}
-	T& Mobile() { return mobile; }
-	const T& Mobile() const { return mobile; }
-	T& Immobile() { return immobile; }
-	const T& Immobile() const { return immobile; }
- };
- 
+
  /* Combine 2 vectors x and y to one vector containing the entries of x and y, starting with the entries of x. */ 
  template<typename EXT>
  typename EXT::VectorType Combine(const typename EXT::VectorType& x, const typename EXT::VectorType&  y){
@@ -33,22 +21,22 @@ namespace StoichPack{
 
 	typename EXT::VectorType ret = EXT::CreateVector(sx+sy);
 
-	typename EXT::VectorIteratorType it =std::copy(EXT::ConstBegin(x),EXT::ConstEnd(x),EXT::Begin(ret));
+	auto it =std::copy(EXT::ConstBegin(x),EXT::ConstEnd(x),EXT::Begin(ret));
 	std::copy(EXT::ConstBegin(y),EXT::ConstEnd(y),it);
 
 	return ret;
  }
 
- /* Combine the vectors in a VectorPair. */ 
+ /* Combine a vector pair p=(x,y) to one vector containing the entries of x and y, starting with the entries of x. */ 
  template<typename EXT>
- typename EXT::VectorType Combine(const typename EXT::VectorPairType& x) { return Combine<EXT>(x.Mobile(),x.Immobile()); }
+ typename EXT::VectorType Combine(const VectorPair<EXT>& p) { return Combine<EXT>(p.Mobile(),p.Immobile()); }
 
  /* Divide the vector x in 2 vectors. The first vector (accesible via result.Mobile()) contains the first n_mobile entries.
   * The second vector (accessible via result.Immobile()) contains the rest. */
  template<typename EXT>
- typename EXT::VectorPairType Divide(const typename EXT::VectorType& x, size_t n_mobile) {
+ VectorPair<EXT> Divide(const typename EXT::VectorType& x, size_t n_mobile) {
 	assert(EXT::size(x)>=n_mobile);
-	typename EXT::VectorPairType ret(EXT::CreateVector(n_mobile),EXT::CreateVector(EXT::size(x)-n_mobile));
+	VectorPair<EXT> ret(EXT::CreateVector(n_mobile),EXT::CreateVector(EXT::size(x)-n_mobile));
 	std::copy(EXT::ConstBegin(x),EXT::ConstBegin(x)+n_mobile,EXT::Begin(ret.Mobile()));
 	std::copy(EXT::ConstBegin(x)+n_mobile,EXT::ConstEnd(x),EXT::Begin(ret.Immobile()));
 	return ret;
@@ -90,12 +78,12 @@ namespace StoichPack{
  /* Divide the matrix x in two submatrices. The first one (accesible via result.Mobile()) contains the first n_mobile rows of x,
   * the second one (accessible via result.Immobile()) contains the rest. */ 
  template<typename EXT>
- typename EXT::MatrixPairType DivideRows(const typename EXT::MatrixType& x, size_t m_mobile){
+ MatrixPair<EXT> DivideRows(const typename EXT::MatrixType& x, size_t m_mobile){
 	const size_t m=EXT::rows(x);
 	assert(m_mobile<=m);
 	const size_t n=EXT::cols(x);
 
-	typename EXT::MatrixPairType ret(EXT::CreateMatrix(m_mobile,n),EXT::CreateMatrix(m-m_mobile,n));
+	MatrixPair<EXT> ret(EXT::CreateMatrix(m_mobile,n),EXT::CreateMatrix(m-m_mobile,n));
 
 	for(size_t i=0;i<m_mobile;++i) std::copy(EXT::ConstBeginRowWise(x,i),EXT::ConstEndRowWise(x,i),EXT::BeginRowWise(ret.Mobile(),i));
 	for(size_t i=m_mobile;i<m;++i) std::copy(EXT::ConstBeginRowWise(x,i),EXT::ConstEndRowWise(x,i),
@@ -107,12 +95,12 @@ namespace StoichPack{
  /* Divide the matrix x in two submatrices. The first one (accesible via result.Mobile()) contains the first n_mobile columns of x,
   * the second one (accessible via result.Immobile()) contains the rest. */ 
  template<typename EXT>
- typename EXT::MatrixPairType DivideCols(const typename EXT::MatrixType& x, size_t n_mobile){
+ MatrixPair<EXT> DivideCols(const typename EXT::MatrixType& x, size_t n_mobile){
 	const size_t n=EXT::cols(x);
 	assert(n_mobile<=n);
 	const size_t m=EXT::rows(x);
 
-	typename EXT::MatrixPairType ret(EXT::CreateMatrix(m,n_mobile),EXT::CreateMatrix(m,n-n_mobile));
+	MatrixPair<EXT> ret(EXT::CreateMatrix(m,n_mobile),EXT::CreateMatrix(m,n-n_mobile));
 
 	for(size_t i=0;i<n_mobile;++i) std::copy(EXT::ConstBeginColWise(x,i),EXT::ConstEndColWise(x,i),EXT::BeginColWise(ret.Mobile(),i));
 	for(size_t i=n_mobile;i<n;++i) std::copy(EXT::ConstBeginColWise(x,i),EXT::ConstEndColWise(x,i),
@@ -133,13 +121,24 @@ namespace StoichPack{
 	return ret;
  }
 
+ template<typename EXT>
+ typename EXT::MatrixType SubRows(const typename EXT::MatrixType& M, const std::vector<size_t>& I){
+	const size_t s = I.size();
+	typename EXT::MatrixType ret = EXT::CreateMatrix(s,EXT::cols(M));
+	for(size_t i=0;i<s;++i){
+		assert(I[i]<EXT::rows(M));
+		std::copy(EXT::ConstBeginRowWise(M,I[i]),EXT::ConstEndRowWise(M,I[i]),EXT::BeginRowWise(ret,i));
+	}
+	return ret;
+ }
+
  /* Get a vector that consists of the entries of x specified in I. */
  template<typename EXT>
  typename EXT::VectorType SubEntries(const typename EXT::VectorType& x, const std::vector<size_t>& I){
 	const size_t s=I.size();
 	typename EXT::VectorType ret = EXT::CreateVector(s);
-	typename EXT::VectorIteratorType itret = EXT::Begin(ret);
-	typename EXT::ConstVectorIteratorType itx =EXT::ConstBegin(x);
+	auto itret = EXT::Begin(ret);
+	auto itx =EXT::ConstBegin(x);
 
 	for(size_t i=0;i<s;++i, ++itret) {
 		assert(I[i]<EXT::rows(x));
@@ -155,7 +154,7 @@ namespace StoichPack{
  typename EXT::MatrixType BooleanMatrix(const typename EXT::MatrixType& M){
 	typename EXT::MatrixType ret(M);
 	for(size_t i=0;i<EXT::cols(M);++i){
-		for(typename EXT::ColWiseIteratorType it=EXT::BeginColWise(ret,i); it!=EXT::EndColWise(ret,i); ++it){
+		for(auto it=EXT::BeginColWise(ret,i); it!=EXT::EndColWise(ret,i); ++it){
 			if(*it!=0) *it=1;
 		}
 	}
@@ -169,6 +168,33 @@ namespace StoichPack{
 	typename EXT::MatrixType ret = EXT::CreateZeroMatrix(s,s);
 	for(size_t i=0;i<s;++i) *(EXT::BeginRowWise(ret,i)+i)=values[i];
 	return ret;
+ }
+
+ template<typename EXT, typename IT>
+ typename EXT::MatrixType ColCat(IT begin, IT end){
+	assert(begin!=end);
+	if(begin+1==end) return *begin;
+	else return CombineCols<EXT>(*begin,ColCat<EXT,IT>(begin+1,end));
+ }
+
+ template<typename EXT, typename IT>
+ typename EXT::MatrixType RowCat(IT begin, IT end){
+	assert(begin!=end);
+	if(begin+1==end) return *begin;
+	else return CombineRows<EXT>(*begin,RowCat<EXT,IT>(begin+1,end));
+ }
+
+ template<typename EXT>
+ MatrixPair<EXT> SplitBlocks(const typename EXT::MatrixType& M, size_t rows, size_t cols){
+	const MatrixPair<EXT> tmp = DivideCols<EXT>(M,cols);
+	return MatrixPair<EXT>(DivideRows<EXT>(tmp.Mobile(),rows).Mobile(),DivideRows<EXT>(tmp.Immobile(),rows).Immobile());
+ }
+
+ template<typename EXT>
+ typename EXT::MatrixType CombineBlocks(const typename EXT::MatrixType M11, const typename EXT::MatrixType M22) {
+	const typename EXT::MatrixType M12 = EXT::CreateZeroMatrix(EXT::rows(M11),EXT::cols(M22));
+	const typename EXT::MatrixType M21 = EXT::CreateZeroMatrix(EXT::rows(M22),EXT::cols(M11));
+	return CombineRows<EXT>(CombineCols<EXT>(M11,M12),CombineCols<EXT>(M21,M22));
  }
 } // namespace StoichPack
 

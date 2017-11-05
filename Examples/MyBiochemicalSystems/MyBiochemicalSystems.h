@@ -25,7 +25,7 @@ typename EXT::VectorType GetDefaultValues(const std::string& name, const StoichP
 
 template<typename EXT>
 FDMVector GetDefaultValues(const std::string& name, const StoichPack::IKineticContainer<EXT>& S, const FDMMesh& mesh){
-	FDMVector u(S.AllSpecies(),mesh);
+	FDMVector u(S.GlobalSpecies(),mesh);
 	for(int i=0;i<mesh.Nodes();++i) u.SetSub(i,GetDefaultValues<EXT>(name,S,mesh.Coordinates(i)));
 	return u;
 }

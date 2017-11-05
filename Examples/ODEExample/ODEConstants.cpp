@@ -17,7 +17,7 @@ const std::string ODEConstants::system = "System3"; //"SystemX", X = 1 ... 3
 
 /*preprocessing: PreprocessingType::NONE for no preprocessing, PreprocessingType::ONESIDED for exploiting one sided couplings,
  *PreprocessingType::REDUCED for using linear combinations of species.*/
-const PreprocessingType ODEConstants::preprocessing = PreprocessingType::NONE;
+const PreprocessingType ODEConstants::preprocessing = PreprocessingType::ONESIDED;
 
 void ODEConstants::print() {
 	cout<<"max_iterations = "<<max_iterations<<endl<<"epsilon = "<<epsilon<<endl<<"T = "<<T<<endl<<"dt = "<<dt<<endl;

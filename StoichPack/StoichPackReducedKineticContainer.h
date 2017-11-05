@@ -1,119 +1,114 @@
 #ifndef __H_STOICHPACK_REDUCED_KINETIC_CONTAINER__
 #define __H_STOICHPACK_REDUCED_KINETIC_CONTAINER__
 
-#include "StoichPackIHierarchicalLinearKineticContainer.h"
+#include "StoichPackIHierarchicalKineticContainer.h"
 
 namespace StoichPack{
-template<typename EXT, class BT = IKineticContainer<EXT> >
-class ReducedKineticContainer : public IHierarchicalLinearKineticContainer<EXT,BT>{
- public:
-	typedef typename EXT::VectorType VectorType;
-	typedef typename EXT::VectorPairType VectorPairType;
-	typedef typename EXT::VectorArrayType VectorArrayType;
-	typedef typename EXT::VectorArrayPairType VectorArrayPairType;
+template<typename EXT>
+class ReducedStageInfo : public HierarchicalStageInfo<EXT>{
+public:
 	typedef typename EXT::MatrixType MatrixType;
-	typedef typename EXT::MatrixPairType MatrixPairType;
+	ReducedStageInfo(const IKineticContainer<EXT>& Base) : base(Base) {
+		for(size_t i=0;i<base.Stages();++i) ProcessStage(i);
+	}
+
+	size_t Stages() const { return toBase.size(); }
+	size_t SubStage(size_t stage) const { return substage[stage]; }
+	std::vector<size_t> SubReactions(size_t stage) const {
+		const size_t reactions = EXT::cols(stoich[stage]);
+		std::vector<size_t> result(reactions);
+		for(size_t i=0;i<reactions;++i) result[i]=i;
+		return result;
+	}
+	MatrixType StoichiometricMatrix(size_t stage) const { return stoich[stage]; }	
+	MatrixType ToBase(size_t stage) const { return toBase[stage]; }
+	MatrixType FromBaseGlobal(size_t stage) const { return fromBase[stage]; }
+	size_t MobileSpecies(size_t stage) const { return mobile[stage]; }
+	bool ForceNoCorrection(size_t stage) const { return linear[stage]; }
+	const IKineticContainer<EXT>& Base() const { return base; }
+private:
+	const IKineticContainer<EXT>& base;
+	std::vector<MatrixType> toBase, fromBase, stoich;
+	std::vector<size_t> substage, mobile;
+	std::vector<bool> linear;
+
 	typedef typename EXT::OrthogonalDecompositionType OrthType;
 
-	ReducedKineticContainer(const BT& base) : IHierarchicalLinearKineticContainer<EXT,BT>(base) {
-	 for(size_t s=0;s<base.Stages();++s){
-		const OrthType decomp1(Base().MobileStoichiometricMatrices()[s]);
-		const OrthType decomp2(Base().ImmobileStoichiometricMatrices()[s]);
+	void ProcessStage(size_t stage){
+		const OrthType decomp1(Base().MobileStoichiometricMatrix(stage));
+		const OrthType decomp2(Base().ImmobileStoichiometricMatrix(stage));
 		const size_t coupled_mobile = EXT::rows(decomp1.R());
 		const size_t coupled_immobile = EXT::rows(decomp2.R());
-		for(size_t i=coupled_immobile;i<Base().ImmobileSpecies(s);++i){
+		
+		const MatrixType mobile_add = EXT::CreateZeroMatrix(EXT::rows(decomp2.Q()),1);
+		const MatrixType immobile_add = EXT::CreateZeroMatrix(EXT::rows(decomp1.Q()),1);
+
+		for(size_t i=coupled_immobile;i<Base().ImmobileSpecies(stage);++i){
 		 const MatrixType Q = SubCols<EXT>(decomp2.Q(),std::vector<size_t>(1,i));
-		 this->AddStage(EXT::CreateMatrix(1,0),s,false,EXT::CreateMatrix(Base().MobileSpecies(s),0),Q,
-		                EXT::CreateMatrix(0,Base().MobileSpecies(s)), EXT::Transposed(Q));
-	 	}
-	 	for(size_t i=coupled_mobile;i<Base().MobileSpecies(s);++i){
+		 toBase.push_back(CombineRows<EXT>(immobile_add,Q));
+		 fromBase.push_back(EXT::Transposed(toBase.back()));
+		 stoich.push_back(EXT::CreateMatrix(1,0));
+		 substage.push_back(stage);
+		 mobile.push_back(0);
+		 linear.push_back(true);
+		}
+	 	for(size_t i=coupled_mobile;i<Base().MobileSpecies(stage);++i){
 		 const MatrixType Q = SubCols<EXT>(decomp1.Q(),std::vector<size_t>(1,i));
-		 this->AddStage(EXT::CreateMatrix(1,0),s,false,Q,EXT::CreateMatrix(Base().ImmobileSpecies(s),0),
-		                EXT::Transposed(Q), EXT::CreateMatrix(0,Base().ImmobileSpecies(s)));
+		 toBase.push_back(CombineRows<EXT>(Q,mobile_add));
+		 fromBase.push_back(EXT::Transposed(toBase.back()));
+		 stoich.push_back(EXT::CreateMatrix(1,0));
+		 substage.push_back(stage);
+		 mobile.push_back(1);
+		 linear.push_back(true);
 	 	}
 
 	 	const MatrixType Q1 = DivideCols<EXT>(decomp1.Q(),coupled_mobile).Mobile();
 	 	const MatrixType Q2 = DivideCols<EXT>(decomp2.Q(),coupled_immobile).Mobile();
 
-	 	this->AddStage(CombineRows<EXT>(decomp1.R(),decomp2.R()),s,true,Q1,Q2,EXT::Transposed(Q1),EXT::Transposed(Q2));
-	 }
-	 this->Finish();
+		const MatrixType Q = CombineBlocks<EXT>(Q1,Q2);
+		toBase.push_back(Q);
+		fromBase.push_back(EXT::Transposed(Q));
+		stoich.push_back(CombineRows<EXT>(decomp1.R(),decomp2.R()));
+		substage.push_back(stage);
+		mobile.push_back(coupled_mobile);
+		linear.push_back(false);
 	}
 
-	VectorType ReactionRatesImpl1(const VectorType& all, size_t stage) const { 
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateVector(0);
-		else return Base().ReactionRatesImpl1(all,this->SubStage(stage));
+	ReducedStageInfo(); //FORBID
+};
+
+template<typename EXT, class BT = IKineticContainer<EXT> >
+class ReducedKineticContainer : public IHierarchicalKineticContainer<EXT,BT>{
+ public:
+	typedef typename EXT::VectorType VectorType;
+	typedef typename EXT::VectorArrayType VectorArrayType;
+	typedef typename EXT::MatrixType MatrixType;
+
+	ReducedKineticContainer(const BT& base)
+		: IHierarchicalKineticContainer<EXT,BT>(ReducedStageInfo<EXT>(base),base){}
+
+	VectorType ConstSpeciesRatesImpl(const VectorType& all, size_t stage) const {
+		return FromBaseGlobal()[stage]*Base().ConstSpeciesRatesImpl(all,SubStages()[stage]);
 	}
-	VectorType ReactionRatesImpl2(const VectorPairType& all, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateVector(0);
-		else return Base().ReactionRatesImpl2(all,this->SubStage(stage));
-	}
-	VectorType SubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const { 
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateVector(0);
-		else return Base().SubReactionRatesImpl1(all,I,this->SubStage(stage));
-	}
-	VectorType SubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateVector(0);
-		else return Base().SubReactionRatesImpl2(all,I,this->SubStage(stage));
+	VectorPair<EXT> ConstSpeciesRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
+		const VectorPair<EXT> tmp = Base().ConstSpeciesRatesImpl(mobile,immobile,SubStages()[stage]);
+		return VectorPair<EXT>(FromBaseMobile()[stage]*tmp.Mobile(),FromBaseImmobile()[stage]*tmp.Immobile());
 	}
 
-	MatrixPairType EmptyPair(size_t stage) const {
-		return MatrixPairType(EXT::CreateMatrix(0,this->MobileSpecies(stage)),EXT::CreateMatrix(0,this->ImmobileSpecies(stage)));
+	MatrixType RateStructure(size_t stage) const {
+		ReducedStageInfo<EXT> I(Base());
+		if(EXT::cols(I.StoichiometricMatrix(stage))==0) return EXT::CreateMatrix(0,1);
+		else return Base().RateStructure(stage)*BooleanMatrix<EXT>(I.ToBase(stage));
 	}
-
-	MatrixType DiffReactionRatesImpl1(const VectorType& all, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateMatrix(0,1);
-		else return Base().DiffReactionRatesImpl1(all,this->SubStage(stage))*this->toBase(stage);
-	}
-	MatrixPairType DiffReactionRatesImpl2(const VectorPairType& all, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EmptyPair(stage);
-		const MatrixPairType tmp = Base().DiffReactionRatesImpl2(all,this->SubStage(stage));
-		return MatrixPairType(tmp.Mobile()*this->toBaseMobile(stage),tmp.Immobile()*this->toBaseImmobile(stage));
-	}
-
-	MatrixType DiffSubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EXT::CreateMatrix(0,1);
-		else return Base().DiffSubReactionRatesImpl1(all,I,this->SubStage(stage))*this->toBase(stage);
-	}
-	MatrixPairType DiffSubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const {
-		if(!this->CorrectionAllowed(stage)) return EmptyPair(stage);
-		const MatrixPairType tmp = Base().DiffSubReactionRatesImpl2(all,I,this->SubStage(stage));
-		return MatrixPairType(tmp.Mobile()*this->toBaseMobile(stage),tmp.Immobile()*this->toBaseImmobile(stage));
-	}
-
-	VectorType ConstSpeciesRatesImpl1(const VectorType& all, size_t stage) const {
-		return this->fromBase(stage)*Base().ConstSpeciesRatesImpl1(all,this->SubStage(stage));
-	}
-
-	VectorPairType ConstSpeciesRatesImpl2(const VectorPairType& all, size_t stage) const {
-		const VectorPairType tmp = Base().ConstSpeciesRatesImpl2(all,this->SubStage(stage));
-		return VectorPairType(this->fromBaseMobile(stage)*tmp.Mobile(),this->fromBaseImmobile(stage)*tmp.Immobile());
-	}
-
-	VectorType ConstMobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
-		return this->fromBaseMobile(stage)*Base().ConstMobileSpeciesRatesImpl(all,this->SubStage(stage));
-	}
-	VectorType ConstImmobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
-		return this->fromBaseImmobile(stage)*Base().ConstImmobileSpeciesRatesImpl(all,this->SubStage(stage));
-	}
-
-	bool ApplyMobileCorrectionImpl(VectorArrayType& mobile, const VectorArrayType& allowed) const {
-		return true;		
-	}
-	bool ApplyImmobileCorrectionImpl(VectorArrayType& immobile, const VectorArrayType& allowed) const {
-		return true;
-	}
-		
-	bool ApplyCorrectionImpl(VectorArrayType& all, const VectorArrayType& allowed) const {
-		return true;
-	}
-
-	MatrixType SpeciesStructure(size_t stage) const { return EXT::CreateMatrix(1,1); }
 
 	IKineticContainer<EXT>* copy() const { return new ReducedKineticContainer(*this); }
 
 	private:
-	using IHierarchicalLinearKineticContainer<EXT,BT>::Base;
+	using IHierarchicalKineticContainer<EXT,BT>::Base;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseGlobal;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseImmobile;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseMobile;
+	using IHierarchicalKineticContainer<EXT,BT>::SubStages;
 };
 }
 

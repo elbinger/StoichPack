@@ -1,250 +1,252 @@
 #ifndef __H_STOICHPACK_ONESIDED_KINETIC_COUPLINGS__
 #define __H_STOICHPACK_ONESIDED_KINETIC_COUPLINGS__
 
-#include "StoichPackIHierarchicalLinearKineticContainer.h"
+#include "StoichPackIHierarchicalKineticContainer.h"
 #include <algorithm>
 
 namespace StoichPack{
 
-template<typename EEXT>
-class Rearangement{
-private:
-	std::vector<size_t> I;
-	typename EEXT::MatrixType fromBase, toBase;
-
+template<typename EXT>
+class OneSidedCouplingsStage{
 public:
-	Rearangement(const std::vector<size_t>& i, size_t n) : I(i), fromBase(EEXT::CreateZeroMatrix(i.size(),n)),
-	                                                       toBase(EEXT::CreateMatrix(n,i.size())) {
-		std::sort(I.begin(),I.end());
-		for(size_t i=0;i<I.size();++i){
-			assert(I[i]<EEXT::cols(fromBase));
-			*(EEXT::BeginRowWise(fromBase,i)+I[i])=1;
-		}
-		toBase=EEXT::Transposed(fromBase);
-	}
-
-	const std::vector<size_t>& Index() const { return I; }
-	const typename EEXT::MatrixType& FromBase() const { return fromBase; }
-	const typename EEXT::MatrixType& ToBase() const { return toBase; }
-};
-	
-template<typename EXT, class BT = IKineticContainer<EXT> >
-class OneSidedCouplings : public IHierarchicalLinearKineticContainer<EXT,BT > {
- 	typedef typename EXT::VectorType VectorType;
-	typedef typename EXT::VectorPairType VectorPairType;
-	typedef typename EXT::VectorArrayType VectorArrayType;
-	typedef typename EXT::VectorArrayPairType VectorArrayPairType;
 	typedef typename EXT::MatrixType MatrixType;
-	typedef typename EXT::MatrixPairType MatrixPairType;
 
-	typedef std::vector<size_t> IndexType;
-
-	static IndexType GetSub(const IndexType& x, const IndexType& I){
-		const size_t s=I.size();
-		IndexType ret(s);
-		for(size_t i=0;i<s;++i) ret[i]=x[I[i]];
-		return ret;
-	}
-
-private:
-	using IHierarchicalLinearKineticContainer<EXT,BT >::Base;
-
-	std::vector<IndexType> subreactions, const_subreactions;
-	std::vector<MatrixType> stoich_const, stoich_const_mobile, stoich_const_immobile;
-
-	bool Update(typename EXT::RowWiseIteratorType x, typename EXT::ConstRowWiseIteratorType y, size_t n) const {
-		bool update=false;
-		for(size_t i=0;i<n;++i){
-			if(*(y+i)!=0 && *(x+i)==0){
-				*(x+i)=1;
-				update=true;
-			}
-		}
-		return update;
-	}
-
-	MatrixType GetDependencies(size_t substage) const {
-		MatrixType structure = Base().SpeciesStructure(substage);
-		const size_t n=EXT::rows(structure);
-		for(size_t i=0;i<n;++i) *(EXT::BeginColWise(structure,i)+i)=1;
-		bool update=true;
-		while(update){
-			update=false;
-			for(size_t i=0;i<n;++i){
-				typename EXT::RowWiseIteratorType it = EXT::BeginRowWise(structure,i);
-				for(size_t j=0;j<n;++j){
-					if(*(it+j)!=0 && i!=j && Update(it,EXT::ConstBeginRowWise(structure,j),n)) update=true;
-				}
-			}
-		}
-		return structure;
-	}
-
-	IndexType StableSortValues(const MatrixType& M) const {
-		class mypair{
-			public:
-			size_t index, values;
-			mypair(size_t i, size_t v) : index(i), values(v) {}
-			bool operator<(const mypair& oth) const { return values<oth.values; }
-		};
-		std::vector<mypair> values;
-		const size_t n=EXT::rows(M);
-		for(size_t i=0;i<n;++i){
-			const size_t tmp = std::count(EXT::ConstBeginRowWise(M,i),EXT::ConstEndRowWise(M,i),sp_scalar(0));
-			values.push_back(mypair(i,n-tmp));
-		}
-		std::sort(values.begin(),values.end());
-		std::vector<size_t> ret;
-		for(size_t i=0;i<values.size();++i) ret.push_back(values[i].index);
-		return ret;
-	}
-
-	void ProcessSubstage(size_t substage){
-		IndexType known_reactions;
-		MatrixType dependencies = GetDependencies(substage);
-		IndexType order = StableSortValues(dependencies);
-
-		while(order.size()!=0){
-			IndexType I;
-			const size_t row = order.front();
-			typename EXT::ConstRowWiseIteratorType it=EXT::ConstBeginRowWise(dependencies,row);
-			for(size_t i=0;i<EXT::rows(dependencies);++i){
-				if(*(it+i)!=0){
-					IndexType::iterator pos=std::find(order.begin(),order.end(),i);
-					if(pos!=order.end()){
-						I.push_back(i);
-						order.erase(pos);
-					}
-				}
-			}
-			Rearangement<EXT> r(I,EXT::rows(dependencies));
-			AddStage(substage,r,known_reactions);
+	OneSidedCouplingsStage(const IKineticContainer<EXT>& _Base, const std::vector<size_t>& _SubSpecies,
+		const std::vector<size_t>& _ConstReactions, size_t _SubStage) :
+			base(_Base), subspecies(_SubSpecies), substage(_SubStage) {
+		for(size_t j : RelevantCols()){
+			if(std::find(_ConstReactions.begin(),_ConstReactions.end(),j)!=_ConstReactions.end())
+				constsubreactions.push_back(j);
 		}
 	}
 
-	void AddStage(size_t substage, const Rearangement<EXT>& R, IndexType& known_reactions){
-		IndexType mob, immob;
-		const size_t basemob = Base().MobileSpecies(substage);
-
-		for(IndexType::const_iterator it=R.Index().begin();it!=R.Index().end();++it){
-			if(*it<basemob) mob.push_back(*it);
-			else immob.push_back((*it)-basemob);
+	size_t SubStage() const { return substage; }
+	const std::vector<size_t>& SubSpecies() const { return subspecies; }
+	const std::vector<size_t>& ConstSubReactions() const { return constsubreactions; }
+	
+	std::vector<size_t> VarSubReactions() const {
+		const MatrixType stoich = base.Global(substage).StoichiometricMatrix();
+		std::vector<size_t> result;
+		for(size_t j : RelevantCols()){
+			if(std::find(constsubreactions.begin(),constsubreactions.end(),j)==constsubreactions.end())
+				result.push_back(j);
 		}
-
-		Rearangement<EXT> subspecies_mobile(mob,basemob);
-		Rearangement<EXT> subspecies_immobile(immob,Base().ImmobileSpecies(substage));
-
-		MatrixType tmp = R.FromBase()*Base().StoichiometricMatrices()[substage];
-		IndexType varreactions, constreactions;
-		const size_t n_r=EXT::cols(tmp);
-		const size_t n_s=EXT::rows(tmp);
-
-		for(size_t j=0;j<n_r;++j){
-			if(size_t(std::count(EXT::BeginColWise(tmp,j),EXT::EndColWise(tmp,j),sp_scalar(0)))<n_s){
-				if(std::find(known_reactions.begin(),known_reactions.end(),j)==known_reactions.end()){
-					known_reactions.push_back(j);
-					varreactions.push_back(j);
-				} else constreactions.push_back(j);
-			}
-		}
-
-		subreactions.push_back(varreactions);
-		const_subreactions.push_back(constreactions);
-
-		Rearangement<EXT> rvar(varreactions,n_r);
-		IHierarchicalLinearKineticContainer<EXT,BT >::AddStage(R.FromBase()*Base().StoichiometricMatrices()[substage]*rvar.ToBase(),substage,true,subspecies_mobile.ToBase(),subspecies_immobile.ToBase(),subspecies_mobile.FromBase(),subspecies_immobile.FromBase());
-
-		Rearangement<EXT> rconst(constreactions,n_r);
-		const MatrixType& M=rconst.ToBase();
-		stoich_const.push_back(R.FromBase()*Base().StoichiometricMatrices()[substage]*M);
-		stoich_const_mobile.push_back(subspecies_mobile.FromBase()*Base().MobileStoichiometricMatrices()[substage]*M);
-		stoich_const_immobile.push_back(subspecies_immobile.FromBase()*Base().ImmobileStoichiometricMatrices()[substage]*M);
-	}
-
-public:
-	OneSidedCouplings(const BT& bt) : IHierarchicalLinearKineticContainer<EXT,BT >(bt) {
-		for(size_t i=0;i<Base().Stages();++i) ProcessSubstage(i);
-		this->Finish();
-	}
-
-	VectorType ReactionRatesImpl1(const VectorType& all, size_t stage) const { 
-		return Base().SubReactionRatesImpl1(all,subreactions[stage],this->SubStage(stage));
-	}
-	VectorType ReactionRatesImpl2(const VectorPairType& all, size_t stage) const {
-		return Base().SubReactionRatesImpl2(all,subreactions[stage],this->SubStage(stage));
-	}
-	VectorType SubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const { 
-		return Base().SubReactionRatesImpl1(all,GetSub(subreactions[stage],I),this->SubStage(stage));
-	}
-	VectorType SubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const {
-		return Base().SubReactionRatesImpl2(all,GetSub(subreactions[stage],I),this->SubStage(stage));
-	}
-
-	MatrixType DiffReactionRatesImpl1(const VectorType& all, size_t stage) const {
-		return Base().DiffSubReactionRatesImpl1(all,subreactions[stage],this->SubStage(stage))*this->toBase(stage);
-	}
-	MatrixPairType DiffReactionRatesImpl2(const VectorPairType& all, size_t stage) const {
-		const MatrixPairType tmp = Base().DiffSubReactionRatesImpl2(all,subreactions[stage],this->SubStage(stage));
-		return MatrixPairType(tmp.Mobile()*this->toBaseMobile(stage),tmp.Immobile()*this->toBaseImmobile(stage));
-	}
-
-	MatrixType DiffSubReactionRatesImpl1(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
-		return Base().DiffSubReactionRatesImpl1(all,GetSub(subreactions[stage],I),this->SubStage(stage))*this->toBase(stage);
-	}
-	MatrixPairType DiffSubReactionRatesImpl2(const VectorPairType& all, const std::vector<size_t>& I, size_t stage) const {
-		const MatrixPairType tmp = Base().DiffSubReactionRatesImpl2(all,GetSub(subreactions[stage],I),this->SubStage(stage));
-		return MatrixPairType(tmp.Mobile()*this->toBaseMobile(stage),tmp.Immobile()*this->toBaseImmobile(stage));
-	}
-
-	VectorType ConstSpeciesRatesImpl1(const VectorType& all, size_t stage) const {
-		return stoich_const[stage]*Base().SubReactionRatesImpl1(all,const_subreactions[stage],this->SubStage(stage))+
-		       this->fromBase(stage)*Base().ConstSpeciesRatesImpl1(all,this->SubStage(stage));
-	}
-
-	VectorPairType ConstSpeciesRatesImpl2(const VectorPairType& all, size_t stage) const {
-		const size_t substage = this->SubStage(stage);
-		const VectorPairType tmp1 = Base().ConstSpeciesRatesImpl2(all,substage);
-		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,subreactions[stage],substage);
-		return VectorPairType( stoich_const_mobile[stage]*tmp2 + this->fromBaseMobile(stage)*tmp1.Mobile(),
-		                       stoich_const_immobile[stage]*tmp2 + this->fromBaseImmobile(stage)*tmp1.Immobile());
-	}
-
-	VectorType ConstMobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
-		const size_t substage = this->SubStage(stage);
-		const VectorType tmp1 = Base().ConstMobileSpeciesRatesImpl(all,substage);
-		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,const_subreactions[stage],substage);
-		return stoich_const_mobile[stage]*tmp2 + this->fromBaseMobile(stage)*tmp1;
-	}
-	VectorType ConstImmobileSpeciesRatesImpl(const VectorPairType& all, size_t stage) const {
-		const size_t substage = this->SubStage(stage);
-		const VectorType tmp1 = Base().ConstImmobileSpeciesRatesImpl(all,substage);
-		const VectorType tmp2 = Base().SubReactionRatesImpl2(all,const_subreactions[stage],substage);
-		return stoich_const_immobile[stage]*tmp2 + this->fromBaseImmobile(stage)*tmp1;
-	}
-
-	bool ApplyMobileCorrectionImpl(VectorArrayType& mobile, const VectorArrayType& allowed) const {
-		VectorArrayType tmp = this->ToBaseMobile(mobile);
-		const bool ret = Base().ApplyMobileCorrectionImpl(tmp,this->ToBaseMobile(allowed));
-		EXT::set(mobile,this->FromBaseMobile(tmp));
-		return ret;
-	}
-	bool ApplyImmobileCorrectionImpl(VectorArrayType& immobile, const VectorArrayType& allowed) const {
-		VectorArrayType tmp = this->ToBaseImmobile(immobile);
-		const bool ret = Base().ApplyImmobileCorrectionImpl(tmp,this->ToBaseImmobile(allowed));
-		EXT::set(immobile, this->FromBaseImmobile(tmp));
-		return ret;
+		return result;
 	}
 		
-	bool ApplyCorrectionImpl(VectorArrayType& all, const VectorArrayType& allowed) const {
-		VectorArrayType tmp = this->ToBase(all);
-		const bool ret = Base().ApplyCorrectionImpl(tmp,this->ToBase(allowed));
-		EXT::set(all,this->FromBase(tmp));
-		return ret;
+	MatrixType ToBase() const{
+		MatrixType result = EXT::CreateZeroMatrix(base.Global(substage).GlobalSpecies(),subspecies.size());
+		for(size_t j=0;j<subspecies.size();++j){
+			*(EXT::BeginColWise(result,j)+subspecies[j])=1;
+		}
+		return result;
 	}
 
-	MatrixType SpeciesStructure(size_t stage) const { return EXT::CreateMatrix(1,1); }
+	MatrixType FromBaseGlobal() const { return ToBase().transpose(); }
+	MatrixType StoichiometricMatrix() const {
+		const MatrixType stoich = base.Global(substage).StoichiometricMatrix();
+		return SubRows<EXT>(SubCols<EXT>(stoich,VarSubReactions()),subspecies);
+	}
 
+	MatrixType ConstStoichiometricMatrix() const{
+		const MatrixType stoich = base.Global(substage).StoichiometricMatrix();
+		return SubRows<EXT>(SubCols<EXT>(stoich,constsubreactions),subspecies);
+	}
+
+	size_t MobileSpecies() const {
+		size_t result=0;
+		for(size_t s : subspecies) {
+			if(s<base.Global(substage).MobileSpecies()) ++result;
+		}
+		return result;
+	}
+
+private:
+	const IKineticContainer<EXT>& base;
+	const std::vector<size_t> subspecies;
+	std::vector<size_t> constsubreactions;
+	const size_t substage;
+
+	std::vector<size_t> RelevantCols() const {
+		std::vector<size_t> result;
+		const MatrixType M = base.Global(substage).StoichiometricMatrix();
+		for(size_t j=0;j<EXT::cols(M);++j){
+			bool found=false;
+			for(size_t i : subspecies){
+				if(*(EXT::ConstBeginColWise(M,j)+i)!=0) found=true;
+			}
+			if(found) result.push_back(j);
+		}
+		return result;
+	}		
+ };
+
+ template<typename EXT>
+ class SpeciesStructure{
+  public:
+	class container{
+		public:
+		container(){}
+		template<typename IT>
+		container(size_t i, IT begin, IT end){
+			for(size_t pos=0; begin!=end; ++begin, ++pos){
+				if(*begin!=0) entries.push_back(pos);
+			}
+			if(std::find(entries.begin(),entries.end(),i)==entries.end()) entries.push_back(i);
+			std::sort(entries.begin(),entries.end());
+			
+		}
+		bool operator<(const container& other) const {
+			if(entries.size()==other.entries.size()) return entries[0]<other.entries[0];
+			else return entries.size()<other.entries.size();
+		}
+		bool operator==(const container& other) const { return other.entries == entries; }
+		const std::vector<size_t>& Entries() const { return entries; }
+		void Remove(const container& other){
+			std::vector<size_t>::iterator end = entries.end();
+			for(size_t x : other.Entries()) end = std::remove(entries.begin(),end,x);
+			entries.resize(std::distance(entries.begin(),end));
+		}
+
+		private:
+		std::vector<size_t> entries;
+	};
+			
+	SpeciesStructure(typename EXT::MatrixType M) {
+		while(UpdateEntries(M)){}
+
+		for(size_t i=0;i<EXT::rows(M);++i){
+			structure.push_back(container(i,EXT::BeginRowWise(M,i),EXT::EndRowWise(M,i)));
+		}
+
+		std::sort(structure.begin(),structure.end());
+		typename std::vector<container>::iterator end = std::unique(structure.begin(),structure.end());
+		structure.resize(std::distance(structure.begin(),end));
+
+		for(size_t i=0;i<structure.size();++i){
+			for(size_t j=i+1;j<structure.size();++j) structure[j].Remove(structure[i]);
+			std::sort(structure.begin()+i+1,structure.end());
+			end = std::unique(structure.begin()+i,structure.end());
+			structure.resize(std::distance(structure.begin(),end));
+		}
+	}
+	
+	typename std::vector<container>::const_iterator begin() const { return structure.begin(); }
+	typename std::vector<container>::const_iterator end() const { return structure.end(); }
+
+	template<typename IT>
+	static bool UpdateEntries(IT begin1, IT end1, IT begin2){
+		for(;begin1!=end1;++begin1,++begin2){
+			if(*begin2!=0 && *begin1==0){
+				*begin1=1;
+				return true;
+			}
+		}
+		return false;
+	}
+	static bool UpdateEntries(typename EXT::MatrixType& M){
+		for(size_t i=0;i<EXT::rows(M);++i){
+			for(size_t j=0;j<EXT::cols(M);++j){
+				if(*(EXT::BeginRowWise(M,i)+j)!=0){
+					if(UpdateEntries(EXT::BeginRowWise(M,i),EXT::EndRowWise(M,i),EXT::BeginRowWise(M,j))) return true;
+				}
+			}
+		}
+		return false;
+	}
+ private:
+	std::vector<container> structure;
+ };
+	
+ template<typename EXT>
+ class OneSidedCouplingsStageArray : public HierarchicalStageInfo<EXT>{
+  private:
+	const IKineticContainer<EXT>& base;
+	std::vector< OneSidedCouplingsStage<EXT> > stages;
+	OneSidedCouplingsStageArray(); //FORBID
+
+	void ProcessSubStage(size_t s) {
+		SpeciesStructure<EXT> structure(base.SpeciesStructure(s));
+		std::vector<size_t> constreactions;
+		for(auto x : structure) {
+			OneSidedCouplingsStage<EXT> stage(base,x.Entries(),constreactions,s);
+			for(size_t r : stage.VarSubReactions()) constreactions.push_back(r);
+			stages.push_back(stage);
+		}
+	}
+
+  public:
+	typedef typename EXT::MatrixType MatrixType;
+	OneSidedCouplingsStageArray(const IKineticContainer<EXT>& Base) : base(Base){
+		for(size_t i=0;i<base.Stages();++i) ProcessSubStage(i);
+	}
+
+	size_t Stages() const { return stages.size(); }
+	size_t SubStage(size_t stage) const { return stages[stage].SubStage(); }
+	std::vector<size_t> SubReactions(size_t stage) const { return stages[stage].VarSubReactions(); }
+	MatrixType StoichiometricMatrix(size_t stage) const { return stages[stage].StoichiometricMatrix(); }
+	MatrixType ToBase(size_t stage) const { return stages[stage].ToBase(); }
+	MatrixType FromBaseGlobal(size_t stage) const { return stages[stage].FromBaseGlobal(); }
+	size_t MobileSpecies(size_t stage) const { return stages[stage].MobileSpecies(); }
+	bool ForceNoCorrection(size_t stage) const { return false; }
+	const IKineticContainer<EXT>& Base() const { return base; }
+
+	typename std::vector<OneSidedCouplingsStage<EXT> >::const_iterator begin() const { return stages.begin(); }
+	typename std::vector<OneSidedCouplingsStage<EXT> >::const_iterator end() const { return stages.end(); }
+};
+
+ template<typename EXT, class BT = IKineticContainer<EXT> >
+ class OneSidedCouplings : public IHierarchicalKineticContainer<EXT,BT > {
+ public:
+ 	typedef typename EXT::VectorType VectorType;
+	typedef typename EXT::VectorArrayType VectorArrayType;
+	typedef typename EXT::MatrixType MatrixType;
+
+	OneSidedCouplings(const OneSidedCouplingsStageArray<EXT>& info, const BT& bt)
+	                  : IHierarchicalKineticContainer<EXT,BT >(info, bt) {
+		Load(info);
+	}
+
+	OneSidedCouplings(const BT& bt) : IHierarchicalKineticContainer<EXT,BT >(OneSidedCouplingsStageArray<EXT>(bt), bt) {
+		Load(OneSidedCouplingsStageArray<EXT>(bt));
+	}
+
+	VectorType ConstSpeciesRatesImpl(const VectorType& all, size_t stage) const {
+		return stoich_const[stage]*Base().SubReactionRatesImpl(all,const_subreactions[stage],SubStages()[stage])
+		       + FromBaseGlobal()[stage]*Base().ConstSpeciesRatesImpl(all,SubStages()[stage]);
+	}
+	VectorPair<EXT> ConstSpeciesRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
+		const VectorType myconst = Base().SubReactionRatesImpl(mobile,immobile,const_subreactions[stage],SubStages()[stage]);
+		const VectorPair<EXT> baseconst = Base().ConstSpeciesRatesImpl(mobile,immobile,SubStages()[stage]);
+		return VectorPair<EXT>(stoich_const_mobile[stage]*myconst+FromBaseMobile()[stage]*baseconst.Mobile(),
+		                       stoich_const_immobile[stage]*myconst+FromBaseImmobile()[stage]*baseconst.Immobile());
+	}
+
+	MatrixType RateStructure(size_t stage) const {
+		return EXT::CreateMatrix(this->SubReactions()[stage].size(),EXT::rows(stoich_const[stage]),1);
+	}
+		
 	IKineticContainer<EXT>* copy() const { return new OneSidedCouplings(*this); }
+
+ private:
+	std::vector< std::vector<size_t> > const_subreactions;
+	std::vector<MatrixType> stoich_const, stoich_const_mobile, stoich_const_immobile;
+
+	using IHierarchicalKineticContainer<EXT,BT>::Base;
+	using IHierarchicalKineticContainer<EXT,BT>::SubStages;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseGlobal;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseMobile;
+	using IHierarchicalKineticContainer<EXT,BT>::FromBaseImmobile;
+
+	void Load(const OneSidedCouplingsStageArray<EXT>& info){
+		for(auto x : info){
+			const_subreactions.push_back(x.ConstSubReactions());
+			stoich_const.push_back(x.ConstStoichiometricMatrix());
+			MatrixPair<EXT> tmp = DivideRows<EXT>(x.ConstStoichiometricMatrix(),x.MobileSpecies());
+			stoich_const_mobile.push_back(tmp.Mobile());
+			stoich_const_immobile.push_back(tmp.Immobile());
+		}
+	}
 };
 
 template<typename EXT, class BT = IKineticContainer<EXT> >

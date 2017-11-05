@@ -106,9 +106,6 @@ public:
 template<typename T, bool rowwise>
 EigenIterator<T,rowwise> operator+(const EigenIterator<T,rowwise>& x, size_t i) { return EigenIterator<T,rowwise>(x)+=i; }
 
-#include <iostream>
-using namespace std;
-
 class OrthDecomposition{
 private:
 	Matrix<sp_scalar,Dynamic,Dynamic> _q,_r;
@@ -117,7 +114,7 @@ public:
 	OrthDecomposition(const Matrix<sp_scalar,Dynamic,Dynamic>& A){
 		ColPivHouseholderQR<Matrix<sp_scalar,Dynamic,Dynamic> > decomp(A);
 		Matrix<sp_scalar,Dynamic,Dynamic> rr = decomp.matrixR();
-		for(int j=0;j<min(rr.rows(),rr.cols());++j){
+		for(int j=0;j<std::min(rr.rows(),rr.cols());++j){
 			for(int i=j+1;i<rr.rows();++i) rr(i,j)=0;
 		}
 		Matrix<sp_scalar,Dynamic,Dynamic> p = decomp.colsPermutation();
@@ -133,15 +130,14 @@ public:
 class EXT{
 public:
 	typedef Matrix<sp_scalar,Dynamic,1> VectorType;
-	typedef Pair<VectorType> VectorPairType;
-
-	static size_t size(const VectorType& x) { return x.rows(); }
-	static VectorType CreateVector(size_t s) { return VectorType(s); }
-	static VectorType CreateVector(size_t s, sp_scalar v){ return Array<sp_scalar,Dynamic,1>::Constant(s,1,v); }
-	static VectorType CreateZeroVector(size_t s) { return Array<sp_scalar,Dynamic,1>::Zero(s,1); }
-
 	typedef EigenIterator<VectorType,false> VectorIteratorType;
 	typedef EigenConstIterator<VectorType,false> ConstVectorIteratorType;
+
+	static VectorType CreateVector(size_t s) { return VectorType(s); }
+	static VectorType CreateVector(size_t s, sp_scalar v){ return Array<sp_scalar,Dynamic,1>::Constant(s,1,v); }
+	static VectorType CreateZeroVector(size_t s) { return CreateVector(s,0); }
+
+	static size_t size(const VectorType& x) { return x.rows(); }
 
 	static VectorIteratorType Begin(VectorType& x) { return VectorIteratorType(x,EigenIteratorPos(0,0)); }
 	static VectorIteratorType End(VectorType& x) { return VectorIteratorType(x,EigenIteratorPos(0,EXT::size(x))); }
@@ -149,22 +145,15 @@ public:
 	static ConstVectorIteratorType ConstEnd(const VectorType& x) { return ConstVectorIteratorType(x,EigenIteratorPos(0,size(x))); }
 
 	typedef std::vector<VectorType> VectorArrayType;
-	typedef Pair<VectorArrayType> VectorArrayPairType;
 
 	static VectorArrayType CreateVectorArray(const VectorType& x) { return VectorArrayType(1,x); }
-	static VectorArrayPairType CreateVectorArrayPair(const VectorType& x, const VectorType& y) {
-		return VectorArrayPairType(VectorArrayType(1,x),VectorArrayType(1,y));
-	}
 
 	static size_t size(const VectorArrayType& x) { return x.size(); }
 
-	typedef std::vector<VectorType>::iterator VectorArrayIteratorType;
-	typedef std::vector<VectorType>::const_iterator ConstVectorArrayIteratorType;
-
-	static VectorArrayIteratorType Begin(VectorArrayType& x) { return x.begin(); }
-	static ConstVectorArrayIteratorType ConstBegin(const VectorArrayType& x) { return x.begin(); }
-	static VectorArrayIteratorType End(VectorArrayType& x){ return x.end(); }
-	static ConstVectorArrayIteratorType ConstEnd(const VectorArrayType& x) { return x.end(); }
+	static VectorArrayType::iterator Begin(VectorArrayType& x) { return x.begin(); }
+	static VectorArrayType::const_iterator ConstBegin(const VectorArrayType& x) { return x.begin(); }
+	static VectorArrayType::iterator End(VectorArrayType& x){ return x.end(); }
+	static VectorArrayType::const_iterator ConstEnd(const VectorArrayType& x) { return x.end(); }
 
 	static VectorArrayType ReserveVectorArray(size_t s) {
 		VectorArrayType ret;
@@ -177,36 +166,39 @@ public:
 	}
 
 	typedef Matrix<sp_scalar,Dynamic,Dynamic> MatrixType;
-	typedef Pair<MatrixType> MatrixPairType;
-	typedef Pair<MatrixPairType> MatrixQuadType;
 
 	static size_t rows(const MatrixType& A) { return A.rows(); }
 	static size_t cols(const MatrixType& A) { return A.cols(); }
 	static MatrixType CreateMatrix(size_t r, size_t c) { return MatrixType(r,c); }
+	static MatrixType CreateMatrix(size_t n) { return CreateMatrix(n,n); }
 	static MatrixType CreateZeroMatrix(size_t r, size_t c) { return Array<sp_scalar,Dynamic,Dynamic>::Zero(r,c); }
+	static MatrixType CreateMatrix(size_t r, size_t c, sp_scalar v) {return MatrixType::Constant(r,c,v); }
 	static MatrixType Transposed(const MatrixType& M) { return M.transpose(); }
 
-	typedef EigenIterator<MatrixType,false> ColWiseIteratorType;
-	typedef EigenConstIterator<MatrixType,false> ConstColWiseIteratorType;
-	typedef EigenIterator<MatrixType,true> RowWiseIteratorType;
-	typedef EigenConstIterator<MatrixType,true> ConstRowWiseIteratorType;
+	static EigenIterator<MatrixType,false> BeginColWise(MatrixType& M, size_t col) {
+		return EigenIterator<MatrixType,false>(M,EigenIteratorPos(col,0));
+	}
+	static EigenConstIterator<MatrixType,false> ConstBeginColWise(const MatrixType& M, size_t col) {
+		return EigenConstIterator<MatrixType,false>(M,EigenIteratorPos(col,0));
+	}
+	static EigenIterator<MatrixType,false> EndColWise(MatrixType& M, size_t col) {
+		return EigenIterator<MatrixType,false>(M,EigenIteratorPos(col,M.rows()));
+	}
+	static EigenConstIterator<MatrixType,false> ConstEndColWise(const MatrixType& M, size_t col) {
+		return EigenConstIterator<MatrixType,false>(M,EigenIteratorPos(col,M.rows()));
+	}
+	static EigenIterator<MatrixType,true> BeginRowWise(MatrixType& M, size_t row) {
+		return EigenIterator<MatrixType,true>(M,EigenIteratorPos(row,0));
+	}
+	static EigenConstIterator<MatrixType,true> ConstBeginRowWise(const MatrixType& M, size_t row) {
+		return EigenConstIterator<MatrixType,true>(M,EigenIteratorPos(row,0));
+	}
+	static EigenIterator<MatrixType,true> EndRowWise(MatrixType& M, size_t row) {
+		return EigenIterator<MatrixType,true>(M,EigenIteratorPos(row,M.cols()));
+	}
 
-	static ColWiseIteratorType BeginColWise(MatrixType& M, size_t col) { return ColWiseIteratorType(M,EigenIteratorPos(col,0)); }
-	static ConstColWiseIteratorType ConstBeginColWise(const MatrixType& M, size_t col) {
-		return ConstColWiseIteratorType(M,EigenIteratorPos(col,0));
-	}
-	static ColWiseIteratorType EndColWise(MatrixType& M, size_t col) {
-		return ColWiseIteratorType(M,EigenIteratorPos(col,M.rows()));
-	}
-	static ConstColWiseIteratorType ConstEndColWise(const MatrixType& M, size_t col) {
-		return ConstColWiseIteratorType(M,EigenIteratorPos(col,M.rows()));
-	}
-	static RowWiseIteratorType BeginRowWise(MatrixType& M, size_t row) { return RowWiseIteratorType(M,EigenIteratorPos(row,0)); }
-	static ConstRowWiseIteratorType ConstBeginRowWise(const MatrixType& M, size_t row) {
-		return ConstRowWiseIteratorType(M,EigenIteratorPos(row,0));
-	}
-	static ConstRowWiseIteratorType ConstEndRowWise(const MatrixType& M, size_t row) {
-		return ConstRowWiseIteratorType(M,EigenIteratorPos(row,M.cols()));
+	static EigenConstIterator<MatrixType,true> ConstEndRowWise(const MatrixType& M, size_t row) {
+		return EigenConstIterator<MatrixType,true>(M,EigenIteratorPos(row,M.cols()));
 	}
 
 	static void set(VectorArrayType& x, const VectorArrayType& y) {
