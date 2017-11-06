@@ -165,7 +165,7 @@ namespace StoichPack{
  template<typename EXT, typename T=sp_scalar>
  typename EXT::MatrixType Diag(const std::vector<T>& values){
 	const size_t s=values.size();
-	typename EXT::MatrixType ret = EXT::CreateZeroMatrix(s,s);
+	typename EXT::MatrixType ret = EXT::CreateMatrix(s,s,0);
 	for(size_t i=0;i<s;++i) *(EXT::BeginRowWise(ret,i)+i)=values[i];
 	return ret;
  }
@@ -192,8 +192,8 @@ namespace StoichPack{
 
  template<typename EXT>
  typename EXT::MatrixType CombineBlocks(const typename EXT::MatrixType M11, const typename EXT::MatrixType M22) {
-	const typename EXT::MatrixType M12 = EXT::CreateZeroMatrix(EXT::rows(M11),EXT::cols(M22));
-	const typename EXT::MatrixType M21 = EXT::CreateZeroMatrix(EXT::rows(M22),EXT::cols(M11));
+	const typename EXT::MatrixType M12 = EXT::CreateMatrix(EXT::rows(M11),EXT::cols(M22),0);
+	const typename EXT::MatrixType M21 = EXT::CreateMatrix(EXT::rows(M22),EXT::cols(M11),0);
 	return CombineRows<EXT>(CombineCols<EXT>(M11,M12),CombineCols<EXT>(M21,M22));
  }
 } // namespace StoichPack

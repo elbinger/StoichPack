@@ -40,8 +40,8 @@ private:
 		const size_t coupled_mobile = EXT::rows(decomp1.R());
 		const size_t coupled_immobile = EXT::rows(decomp2.R());
 		
-		const MatrixType mobile_add = EXT::CreateZeroMatrix(EXT::rows(decomp2.Q()),1);
-		const MatrixType immobile_add = EXT::CreateZeroMatrix(EXT::rows(decomp1.Q()),1);
+		const MatrixType mobile_add = EXT::CreateMatrix(EXT::rows(decomp2.Q()),1,0);
+		const MatrixType immobile_add = EXT::CreateMatrix(EXT::rows(decomp1.Q()),1,0);
 
 		for(size_t i=coupled_immobile;i<Base().ImmobileSpecies(stage);++i){
 		 const MatrixType Q = SubCols<EXT>(decomp2.Q(),std::vector<size_t>(1,i));

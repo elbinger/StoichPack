@@ -35,7 +35,7 @@ public:
 	}
 		
 	MatrixType ToBase() const{
-		MatrixType result = EXT::CreateZeroMatrix(base.Global(substage).GlobalSpecies(),subspecies.size());
+		MatrixType result = EXT::CreateMatrix(base.Global(substage).GlobalSpecies(),subspecies.size(),0);
 		for(size_t j=0;j<subspecies.size();++j){
 			*(EXT::BeginColWise(result,j)+subspecies[j])=1;
 		}

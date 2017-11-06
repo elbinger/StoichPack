@@ -25,7 +25,7 @@ namespace StoichPack{
 		//assemble stoichiometric matrix
 		const std::vector<KineticReactionType>& r=problem.KineticReactions();
 		const size_t n = problem.Count(species_type::mobile)+problem.Count(species_type::immobile);
-		MatrixType stoich = EXT::CreateZeroMatrix(n,r.size());
+		MatrixType stoich = EXT::CreateMatrix(n,r.size(),0);
 		for(size_t i=0;i<r.size();++i){
 			r[i].Add(EXT::BeginColWise(stoich,i),r[i].Coefficients());
 		}
@@ -86,7 +86,7 @@ namespace StoichPack{
 	 ReturnType result;
 	 size_t row;
 	 Impl1DiffRateOp(const typename EXT::VectorType& all, size_t rows, size_t cols)
-	                 : data(EXT::ConstBegin(all)), result(EXT::CreateZeroMatrix(rows,cols)), row(0) {
+	                 : data(EXT::ConstBegin(all)), result(EXT::CreateMatrix(rows,cols,0)), row(0) {
 	 }
 	 void apply(const KineticReactionType& r){
 		r.Add(EXT::BeginRowWise(result,row),r.DiffRate(data));
@@ -102,7 +102,7 @@ namespace StoichPack{
 	 size_t row;
 	 Impl2DiffRateOp(const VectorType& mobile, const VectorType& immobile, size_t rows, size_t cols1, size_t cols2)
 	                 : data1(EXT::ConstBegin(mobile)), data2(EXT::ConstBegin(immobile)),
-	                   result(EXT::CreateZeroMatrix(rows,cols1),EXT::CreateZeroMatrix(rows,cols2)), row(0) {
+	                   result(EXT::CreateMatrix(rows,cols1,0),EXT::CreateMatrix(rows,cols2,0)), row(0) {
 	 }
 	 void apply(const KineticReactionType& r){
 		r.Add(EXT::BeginRowWise(result.Mobile(),row),EXT::BeginRowWise(result.Immobile(),row),r.DiffRate(data1,data2));
@@ -115,7 +115,7 @@ namespace StoichPack{
 	 ReturnType result;
 	 size_t row;
 	 StructureOp(size_t rows, size_t cols)
-	                 : result(EXT::CreateZeroMatrix(rows,cols)), row(0) {
+	                 : result(EXT::CreateMatrix(rows,cols,0)), row(0) {
 	 }
 	 void apply(const KineticReactionType& r){
 		r.Add(EXT::BeginRowWise(result,row),r.Dependencies());
@@ -209,7 +209,7 @@ namespace StoichPack{
 		/*assert(this->CheckSize(all,stage));
 		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
 		const size_t s= r.size();
-		MatrixType ret = EXT::CreateZeroMatrix(s,this->GlobalSpecies());
+		MatrixType ret = EXT::CreateMatrix(s,this->GlobalSpecies(),0);
 		const typename EXT::ConstVectorIteratorType data = EXT::ConstBegin(all);
 		for(size_t i=0;i<s;++i){
 			r[i].Add(EXT::BeginRowWise(ret,i),r[i].DiffRate(data));
@@ -224,7 +224,7 @@ namespace StoichPack{
 		/*assert(this->CheckSize(all,stage));
 		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
 		const size_t s= r.size();
-		MatrixPair<EXT> ret(EXT::CreateZeroMatrix(s,this->MobileSpecies()),EXT::CreateZeroMatrix(s,this->ImmobileSpecies()));
+		MatrixPair<EXT> ret(EXT::CreateMatrix(s,this->MobileSpecies(),0),EXT::CreateMatrix(s,this->ImmobileSpecies(),0));
 		const typename EXT::ConstVectorIteratorType data1 = EXT::ConstBegin(all.Mobile());
 		const typename EXT::ConstVectorIteratorType data2 = EXT::ConstBegin(all.Immobile());
 
@@ -246,11 +246,11 @@ namespace StoichPack{
 	}
 
 	VectorType ConstSpeciesRatesImpl(const VectorType& all, size_t stage) const {
-		return EXT::CreateZeroVector(this->GlobalSpecies(0));
+		return EXT::CreateVector(this->GlobalSpecies(0),0);
 	}
 
 	VectorPair<EXT> ConstSpeciesRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
-		return VectorPair<EXT>(EXT::CreateZeroVector(this->MobileSpecies()), EXT::CreateZeroVector(this->ImmobileSpecies()));
+		return VectorPair<EXT>(EXT::CreateVector(this->MobileSpecies(),0), EXT::CreateVector(this->ImmobileSpecies(),0));
 	}
 
 

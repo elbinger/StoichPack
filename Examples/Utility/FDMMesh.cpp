@@ -1,22 +1,29 @@
+/* File:    FDMMesh.cpp
+ * Author:  Tobias Elbinger (elbinger@math.fau.de)
+ * Purpose: Provide a mesh class for solving dt c - div(nabla(c)) = f(c) with hom. Neumann boundary in 1,2,3 dimensions with finite differences.
+ */
+
 #include "FDMMesh.h"
 #include <cmath>
 
 void FDMMesh::AddDiagNode(int i, size_t species, std::vector<triplet>& triplets) const{
-	const double coeff = pow(2.,dimension)/(h*h);
+	//Creates triplets for "diagonal" entries. Values are initialized with 0, since diagonal entries change in every Newton iteraton.
 	for(size_t s1=0;s1<species;++s1){
 		for(size_t s2=0;s2<species;++s2){
-			const double tmp = (s1==s2) ? coeff : 0.;
-			triplets.push_back(triplet(i*species+s1,i*species+s2,tmp));
+			triplets.push_back(triplet(i*species+s1,i*species+s2,0));
 		}
 	}
 }
 void FDMMesh::AddOffDiagNode(int i, int j, size_t species, std::vector<triplet>& triplets) const{
+	//Creates triplets for "offdiagonal" entries.
+	//Values are initialized with the correct value, since they do not need to be updated in every Newton iteration.
+
 	const double coeff = -1./(h*h);
 	for(size_t s=0;s<species;++s) triplets.push_back(triplet(i*species+s,j*species+s,coeff));
 } 
 				
-FDMMesh::FDMMesh(size_t npd, size_t d)
-		: nodes_per_dimension(npd), dimension(d), h(1./(npd-1)){
+FDMMesh::FDMMesh(size_t nodesperdimension, size_t dim)
+		: nodes_per_dimension(nodesperdimension), dimension(dim), h(1./(nodesperdimension-1)){
 	assert(nodes_per_dimension>1);
 	assert(dimension>=1 && dimension<=3);
 }
@@ -46,6 +53,8 @@ std::vector<int> FDMMesh::Neighbours(int i) const {
 		const std::pair<bool,bool> bnd = BndNode(i,d);
 		int left = i-SubNodes(d);
 		int right = i+SubNodes(d);
+
+		//ghost nodes
 		if(bnd.first) left=right;
 		else if(bnd.second) right=left;
 

@@ -28,4 +28,4 @@ PDEConstants.o: PDEConstants.h PDEConstants.cpp
 	$(CC) $(DEFAULT_CC_FLAGS) -c PDEConstants.cpp
 
 clean:
-	rm -f *.o *~ out_* PDEExample PDEExample2
+	rm -f *.o *~ out_* PDEExample

@@ -114,7 +114,7 @@ namespace StoichPack{
 	size_t Stages() const { return entries.size(); }
 
 	VectorType ToOriginalGlobal(const VectorArrayType& all) const {
-		VectorType result = EXT::CreateZeroVector(GlobalSpecies());
+		VectorType result = EXT::CreateVector(GlobalSpecies(),0);
 		for(size_t i=0;i<Stages();++i) {
 			result+=entries[i].Global().ToOriginal()*all[i];
 		}
@@ -122,13 +122,13 @@ namespace StoichPack{
 	}
 
 	VectorType ToOriginalMobile(const VectorArrayType& mobile) const {
-		VectorType result = EXT::CreateZeroVector(MobileSpecies());
+		VectorType result = EXT::CreateVector(MobileSpecies(),0);
 		for(size_t i=0;i<Stages();++i) result+=entries[i].Mobile().ToOriginal()*mobile[i];
 		return result;
 	}
 	
 	VectorType ToOriginalImmobile(const VectorArrayType& immobile) const {
-		VectorType result = EXT::CreateZeroVector(ImmobileSpecies());
+		VectorType result = EXT::CreateVector(ImmobileSpecies(),0);
 		for(size_t i=0;i<Stages();++i) result+=entries[i].Immobile().ToOriginal()*immobile[i];
 		return result;
 	}

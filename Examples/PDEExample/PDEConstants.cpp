@@ -1,4 +1,4 @@
-// "config file" for ODE problems
+// "config file" for PDE problems
 
 #include "PDEConstants.h"
 #include <iostream>
@@ -11,8 +11,8 @@ const int PDEConstants::max_iterations = 50; //max. number of newton iterations
 const sp_scalar PDEConstants::epsilon_mobile = 1e-8; //stopping criterion for newton method
 const sp_scalar PDEConstants::epsilon_immobile = PDEConstants::epsilon_mobile*1e-4; //stopping criterion for newton method
 
-const int PDEConstants::linear_max_iterations = 0; //max. number of newton iterations
-const sp_scalar PDEConstants::linear_epsilon = 0; //stopping criterion for newton method
+const int PDEConstants::linear_max_iterations = 0; //max. number of iterations for linear solver (0: use Eigen default)
+const sp_scalar PDEConstants::linear_epsilon = 0; //stopping criterion for linear solver (0: use Eigen default)
 
 const sp_scalar PDEConstants::T = 1; // end of time interval (start=0)
 const sp_scalar PDEConstants::dt = 0.1; // time step width
