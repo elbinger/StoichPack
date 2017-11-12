@@ -1,8 +1,14 @@
 #include "MyReactions.h"
 
+/* File:    MyReactions.cpp
+ * Author:  Tobias Elbinger (elbinger@math.fau.de)
+ * Purpose: Define some basic reactions, see MyReactions.h for more information about the reactions
+ */
+
+
 MichaelisMenten::MichaelisMenten(string educt, string product, sp_scalar vmax, sp_scalar km) : vMax(vmax), Km(km){
-	IKineticReaction::AddSpecies(educt,-1);
-	IKineticReaction::AddSpecies(product,1);
+	IKineticReaction::AddSpecies(educt,-1);	//educts: always negative stoichiometric coefficient
+	IKineticReaction::AddSpecies(product,1); //products: always positive stoichiometric coefficients
 }
 
 sp_scalar MichaelisMenten::RateImpl(const vector<sp_scalar>& c) const {
@@ -14,6 +20,7 @@ vector<sp_scalar> MichaelisMenten::DiffRateImpl(const vector<sp_scalar>& c) cons
 }
 
 vector<bool> MichaelisMenten::Dependencies() const{
+	// the rate function depends on the educt but not on the product
 	return { true , false };
 }
 

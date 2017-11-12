@@ -1,0 +1,8 @@
+Some utilities for ODE/PDE solver.
+
+Files:
+FDMMesh.h/cpp: A mesh for finite difference discretization on unit interval/square/cube.
+FDMVector.h: A vector representing a discrete solution on a FDMMesh (supporting multi-species).
+FDMSparseMatrix.h: A sparse matrix capable of storing the jacobian of a FDMVector-valued function.
+Newton.h: A Newton method.
+

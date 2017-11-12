@@ -1,0 +1,8 @@
+Solve dt c - laplace u = f(c) in Omega, -nabla c * nu = 0 on boundary(Omega)
+using finite differences, backward euler and StoichPack.
+
+If ../Makefile.inc is configured correctly, you can just type make
+
+Files:
+PDEExample.cpp: The actual solver.
+PDEConstants.cpp: Configuration of the solver

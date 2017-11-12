@@ -1,3 +1,8 @@
+/* File:    SpatialModifier.h
+ * Author:  Tobias Elbinger (elbinger@math.fau.de)
+ * Purpose: Create simple initial solutions that are not constant in space.
+ */
+
 #ifndef __H_SPATIAL_MODIFER__
 #define __H_SPATIAL_MODIFER__
 

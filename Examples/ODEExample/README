@@ -1,0 +1,7 @@
+Solve ODE problems using StoichPack.
+If ../Makefile.inc if configured correctly, you can just type make.
+
+Files:
+ODEExample.cpp: The actual solver.
+ODEConstants.cpp: Configuration of the solver.
+

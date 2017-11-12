@@ -1,48 +1,78 @@
+/* File:    MyBiochemicalSystems.cpp
+ * Author:  Tobias Elbinger (elbinger@math.fau.de)
+ * Purpose: Define examplary biochemical systems.
+ */
+
 #include "StoichPackBiochemicalSystem.h"
 #include "MyReactions.h"
 #include "SpatialModifier.h"
 
 BiochemicalSystem<> System1(){
+	/* System 1:
+	 * 2 mobile species, called "A" and "B".
+	 * 1 immobile species, called "C"
+	 * Michaelis-Menten reaction: A --> B
+	 * Michaelis-Menten reaction: B --> C
+	 * Note that this comment is not necessary, since the code is self-explaining!
+	 */
+
 	BiochemicalSystem<> r;
 	r.AddKineticReaction(new MichaelisMenten("A","B",1,1));
 	r.AddKineticReaction(new MichaelisMenten("B","C",1,1));
 
 	r.AddSpecies({"A", "C"},species_type::mobile);
+	//we can also write:
+	//r.AddSpecies("A",species_type::mobile)
+	//r.AddSpecies("B",species_type::mobile)
 	r.AddSpecies("B",species_type::immobile);
 
+	//the species can also be added using a different order
+	//it is possible to add species twice, as long as they are added with the same type
 	return r;
 }
 
 std::vector<SpatialModifier> System1Default(){
+	//Default initial values for System 1 : B=C=0, A=1*somefunction(x,y,z)
 	return { SpatialModifier("A",1,{false,false,false}) };
 }
 
 BiochemicalSystem<> System2(){
-	BiochemicalSystem<> r = System1();
-	r.AddKineticReaction(new MichaelisMenten("C","B",1,1));
+	/* System 1:
+	 * 2 mobile species, called "A" and "B".
+	 * 1 immobile species, called "C"
+	 * Michaelis-Menten reaction: A --> B
+	 * Michaelis-Menten reaction: B --> C
+	 * Michaelis-Menten reaction: C --> B
+	 * This is System 1 with 1 additional reaction.
+	 */
+	BiochemicalSystem<> r = System1(); //reuse implementation of System1
+	r.AddKineticReaction(new MichaelisMenten("C","B",1,1)); //add additional reaction
 	return r;
 }
 
 std::vector<SpatialModifier> System2Default(){
-	return System1Default();
+	return System1Default(); //same default values as for System 1
 }
 
 
 void Cycle(BiochemicalSystem<>& r, const std::vector<string>& species){
+	//species.size Michaelis-Menten reactions: species[i]-->species[i+1], where species[species.size()] is used for species[0]
 	assert(species.size()>1);
 	for(size_t i=0;i<species.size()-1;++i) r.AddKineticReaction(new MichaelisMenten(species[i],species[i+1],1,1));
 	r.AddKineticReaction(new MichaelisMenten(species.back(),species.front(),1,1));
 }
 
 BiochemicalSystem<> System3(){
+	//6 "cycles" and some reactions between them
 	BiochemicalSystem<> r;
-	std::vector<string> cyc11, cyc12, cyc13, cyc21, cyc22, cyc3;
-	cyc11.push_back("A11"); cyc11.push_back("B11"); cyc11.push_back("C11"); cyc11.push_back("D11");
-	cyc12.push_back("A12"); cyc12.push_back("B12"); cyc12.push_back("C12"); cyc12.push_back("D12");
-	cyc13.push_back("A13"); cyc13.push_back("B13"); cyc13.push_back("C13"); cyc13.push_back("D13");
-	cyc21.push_back("A21"); cyc21.push_back("B21"); cyc21.push_back("C21"); cyc21.push_back("D21");
-	cyc22.push_back("A22"); cyc22.push_back("B22"); cyc22.push_back("C22"); cyc22.push_back("D22");
-	cyc3.push_back("A3"); cyc3.push_back("B3"); cyc3.push_back("C3"); cyc3.push_back("D3");
+
+	//the cycles:
+	std::vector<string> cyc11 = {"A11", "B11", "C11", "D11"};
+	std::vector<string> cyc12 = {"A12", "B12", "C12", "D12"};
+	std::vector<string> cyc13 = {"A13", "B13", "C13", "D13"};
+	std::vector<string> cyc21 = {"A21", "B21", "C21", "D21"};
+	std::vector<string> cyc22 = {"A22", "B22", "C22", "D22"};
+	std::vector<string> cyc3 = {"A3", "B3", "C3", "D3"};
 
 	r.AddKineticReaction(new MichaelisMenten("B22","B3",1,1));
 	r.AddKineticReaction(new MichaelisMenten("C21","C3",1,1));
@@ -86,6 +116,10 @@ BiochemicalSystem<> System3(){
 }
 
 std::vector<SpatialModifier> System3Default(){
+	//Default initial values for system 3
+	//Axy = 1*somefuntion
+	//Cxy = 0.5*somefunction
+	//all other species are 0
 	SpatialModifier A11("A11",1,{false,false,false});
 	SpatialModifier A12("A12",1,{true,false,false});
 	SpatialModifier A13("A13",1,{false,true,false});
@@ -118,11 +152,13 @@ vector<SpatialModifier> GetDefaultModifiers(const string& name){
 vector<sp_scalar> GetDefaultValuesImpl(const string& name, const vector<InitializedSpecies>& participants, const vector<sp_scalar>& X){
 	vector<sp_scalar> result;
 
+	//load a "SpatialModifieres", i.e. a class that makes all species vary in space (and all of them different)
 	const vector<SpatialModifier> mod = GetDefaultModifiers(name);
 
 	for(auto s : participants){
+		//find modifier of participant
 		vector<SpatialModifier>::const_iterator it = std::find(mod.begin(),mod.end(),s.Name());
-		if(it==mod.end()) result.push_back(0);
+		if(it==mod.end()) result.push_back(0); //no modifier --> 0
 		else result.push_back(it->GetValue(X));
 	}
 	return result;

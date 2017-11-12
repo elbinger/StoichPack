@@ -1,6 +1,7 @@
 /* File: FDMMesh.h
  * Author: Tobias Elbinger (elbinger@math.fau.de)
- * Purpose: Provide a mesh class for solving dt c - div(nabla(c)) = f(c) with hom. Neumann boundary in 1,2,3 dimensions with finite differences.
+ * Purpose: Provide a mesh class for solving dt c - div(nabla(c)) = f(c) on unit interval/square/cube
+ *          with hom. Neumann boundary in 1,2,3 dimensions with finite differences.
  */
 
 #ifndef __H_FDMMESH__
@@ -21,9 +22,9 @@ private:
 	void AddOffDiagNode(int i, int j, size_t specis, std::vector<triplet>& triplets) const;
 public:
 	//We assume a unit cube/square/interval. We assume ah_x=h_y=h_z.
-	const int nodes_per_dimension;
-	const int dimension;
-	const double h;
+	const int nodes_per_dimension; //number of discretization points in each dimension
+	const int dimension; //dimension of Omega, dimension \in {1, 2, 3}
+	const double h; //distance of two discretization points
 	
 FDMMesh(size_t nodesperdimension, size_t dim);
 
@@ -37,36 +38,16 @@ std::vector<int> Neighbours(int i) const ; //Indeces of all neighbours. We are u
 
 void DefaultTriplets(std::vector<triplet>& triplets, size_t species) const; //Get eigen triplets for creating a sparse matrix
 
-void DefaultSparse(Eigen::SparseMatrix<double>& A, size_t species) const; //Create a sparse matrix
+//Create a sparse matrix with for the mesh and the given number of species
+void DefaultSparse(Eigen::SparseMatrix<double>& A, size_t species) const;
 
 std::vector<double> Coordinates(int i) const; //Coordinates of node i
 };
 
-template<typename T>
-void MeshIterationImpl(const FDMMesh& mesh, T& data, int dim, int start){
-	assert(dim>0);
-	assert( (start==0 && dim==mesh.dimension) || dim<mesh.dimension );
-	const int subnodes = mesh.SubNodes(dim);
-	const int npd = mesh.nodes_per_dimension;
-	assert(start%subnodes==0);
-
-	// treat boundary conditions
-	for(int i=start;i<start+subnodes;++i) data.boundary(dim,0,mesh,i);
-	const int start2 = start+(npd-1)*subnodes;
-	for(int i=start2;i<start2+subnodes;++i) data.boundary(dim,1,mesh,i);
-	// inner nodes
-	if(dim==1){
-		for(int i=1;i<npd-1;++i) data.inner(mesh,start+i);
-	} else {
-		for(int i=1;i<npd-1;++i)
-			MeshIterationImpl(mesh,data,dim-1,start+i*subnodes);
-	}
-}
-
-template<typename T>
-void MeshIteration(const FDMMesh& mesh, T& data){
-	MeshIterationImpl<T>(mesh,data,mesh.dimension,0);
-}
-
+/* Storage Order:
+ * Vectors will store the value of the i-th species in the point (x*h,y*h,z*h) at the position 
+ * 	i+nspec*(x+nodes_per_dimension*(y+nodes_per_dimension*z)),
+ * where nspec is the number of species. The FDMMesh class will use the the same storage order.
+ */
 
 #endif

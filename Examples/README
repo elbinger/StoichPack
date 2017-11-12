@@ -4,3 +4,13 @@ Otherwise: configure Makefile.inc, then execute make
 Files:
 The example in this folder uses Eigen (http://eigen.tuxfamily.org) for linear algebra. The Makefile will extract the source files.
 The file StoichPackEigen demonstrates how to make StoichPack use the linear algebra functions of eigen.
+
+The directory Utility contains some basic utilities: A mesh class, a sparse matrix class, a vector class for multi-species context and a Newton method. You should look at this directory first.
+
+The directory MyBiochemicalSystems contains some example biochemical systems (not taken from real world) and function for loading those systems
+and default initial values. You should look at this directory before looking at ODEExample and PDEExample.
+
+The directory ODEExample contains an example on how to solve ODE systems with StoichPack and how to use preprocessing.
+
+The directory PDEExample contains an example on how to solve PDE systems with StoichPack using Finite Differences and how to use preprocessing.
+

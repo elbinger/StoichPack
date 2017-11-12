@@ -1,0 +1,7 @@
+Some examples for biochemical systems.
+
+Files:
+MyReaction.cpp/h: Some reaction types (Michaelis-Menten, Bi-Bi-Ping-Pong, Mass Action Law)
+MyBiochemicalSystems.cpp/h: Some biochemical systems, functions to load biochemical systems and default initial values.
+SpatialModifier.h: spatial modification to get simple initial solutions that are not constant in space.
+
