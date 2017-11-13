@@ -39,7 +39,7 @@ namespace StoichPack{
 		throw StoichPackException("unkown type!");
 	}
 
-	//FORBID the following operators
+	//FORBID the following operators and constructors
 	BasicSpecies();
 	bool operator==(const BasicSpecies&) const;
 	bool operator!=(const BasicSpecies&) const;

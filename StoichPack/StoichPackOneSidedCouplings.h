@@ -2,7 +2,6 @@
 #define __H_STOICHPACK_ONESIDED_KINETIC_COUPLINGS__
 
 #include "StoichPackIHierarchicalKineticContainer.h"
-#include <algorithm>
 
 namespace StoichPack{
 

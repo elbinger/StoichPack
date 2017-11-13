@@ -6,23 +6,23 @@
 #define __H_STOICPACK_BIOCHEMICAL_SYSTEM__
 
 #include "StoichPackIKineticReaction.h"
-#include <memory>
 #include <iostream>
 
 namespace StoichPack{
 
 /* class BiochemicalSystem:
- * Store all reactions and biochemical species of a biochemical system. */
+ * Store all reactions and biochemical species of a biochemical system.
+ * Template parameters:
+ *  * KineticType: The storage type for kinetic reactions (default = IKineticReaction). */
 template<class KineticType = IKineticReaction>
 class BiochemicalSystem{
-	typedef KineticType* KPTR;
-	typedef std::shared_ptr<KineticType> SHARED_KPTR;
-	typedef const KineticType& KREF;
+	typedef std::shared_ptr<KineticType> KPTR;
 private:
-	std::vector<SHARED_KPTR> kinetic_reactions;
-	BasicSpeciesArray species;
+	std::vector<KPTR> kinetic_reactions; //all participating kinetic reactions
+	BasicSpeciesArray species; //all participating species
 
 public:
+	//AddSpecies: add one or more species to the system
 	void AddSpecies(const std::string& name, species_type type){ species.Add(name,type); }
 	void AddSpecies(const std::vector<std::string>& names, species_type type){
 		for(auto n : names) AddSpecies(n,type);
@@ -31,32 +31,37 @@ public:
 		for(auto n : names) AddSpecies(n,type);
 	}
 
-	void AddKineticReaction(KPTR r){ kinetic_reactions.push_back(SHARED_KPTR(r)); }
+	//Add a kinetic reaction to the system
+	void AddKineticReaction(KineticType* r){ kinetic_reactions.push_back(KPTR(r)); }
 
+	//getters
 	const BasicSpeciesArray& Participants() const { return species; }
-	const std::vector<SHARED_KPTR>& KineticReactions() const { return kinetic_reactions; }
+	const std::vector<KPTR>& KineticReactions() const { return kinetic_reactions; }
  };
 
 /* class InitializedBiochemicalSystem:
  * Store an aequivalent to a BiochemicalSystem object with InitializedReactions (cf. StoichPackIReaction.h/StoichPackIKineticReaction.h)
- * and InitializedSpecies (cf. StoichPackSpecies.h). */
+ * and InitializedSpecies (cf. StoichPackSpecies.h).
+ * Template parameters:
+ *  * KineticType: storage type for kinetic reactions (default = IKineticReaction).*/
 template<class KineticType = IKineticReaction>
 class InitializedBiochemicalSystem{
 private:
-	std::vector<InitializedKineticReaction<KineticType> > kinetic_reactions;
-	std::vector<InitializedSpecies> species;
+	std::vector<InitializedKineticReaction<KineticType> > kinetic_reactions; //participating kinetic reactions
+	std::vector<InitializedSpecies> species; //participating species
 	std::vector<size_t> counter; // the number of all species with a certain type (e.g. species_type::mobile)
 	InitializedBiochemicalSystem(); //FORBID
 public:
 	typedef InitializedKineticReaction<KineticType> KineticReactionType;
 
+	//Create InitializedBiochemicalSystem from a BiochemicalSystem
 	explicit InitializedBiochemicalSystem(BiochemicalSystem<KineticType> S) : counter(N_SPECIES_TYPES,0) {
 		std::vector<BasicSpecies> tmp = S.Participants().SortedData(); //sorted vector of species
 		size_t pos=0;
 		for(auto p : tmp) // for each participant p
-			species.push_back(InitializedSpecies(p,pos,counter));
+			species.push_back(InitializedSpecies(p,pos,counter)); //add and update counters/positions
 		for(auto kr : S.KineticReactions()) // for each kinetic reaction kr
-			kinetic_reactions.push_back(KineticReactionType(kr,species));
+			kinetic_reactions.push_back(KineticReactionType(kr,species)); //initialize and add
 	}
 
 	/* getters */
@@ -65,6 +70,7 @@ public:
 	const std::vector<InitializedSpecies>& Participants() const { return species; }
 };
 
+//print InitializedBiochemicalSystem
 template<typename ReactionType>
 std::ostream& operator<<(std::ostream& os, const InitializedBiochemicalSystem<ReactionType>& system){
 	os<<"Species:"<<std::endl;

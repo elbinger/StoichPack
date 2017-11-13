@@ -6,7 +6,6 @@
 #define __H_STOICHPACK_IKINETICREACTION__
 
 #include "StoichPackIReaction.h"
-#include <cassert>
 
 namespace StoichPack{
 
@@ -41,23 +40,33 @@ namespace StoichPack{
  * Extend the InitializedReaction class for treating kinetic reactions, i.e. add function Rate, DiffRate and Dependencies. */
 template<typename ReactionType = IKineticReaction>
 class InitializedKineticReaction : public InitializedReaction<ReactionType> {
-private:
-	typedef ReactionType* RPTR;
-	typedef const ReactionType* CRPTR;
-
 public:
 	InitializedKineticReaction(const std::shared_ptr<ReactionType>& r, const std::vector<InitializedSpecies>& s)
 	                           : InitializedReaction<ReactionType>(r,s) {}
 
+	/* Returns the reaction rate for the concentrations values stored in a container.
+	 * Parameters:
+	 * v: an iterator to the beginning of the container. */
 	template<typename ITV>
 	sp_scalar Rate(ITV v) const {
-		//1) Get values of participants
+		//1) Get values of participants (this->GetValues)
 		//2) Call RateImpl of the underlying kinetic reaction.
 		return this->Reaction().RateImpl(this->GetValues(v));
 	}
-	template<typename ITM, typename ITIMM>
-	sp_scalar Rate(ITM m, ITIMM imm) const { return this->Reaction().RateImpl(this->GetValues(m,imm)); }
 
+	/* Returns the reaction rate for the concentrations values stored in 2 containers (1 for mobile species, 1 for immobile species).
+	 * Parameters:
+	 * m: an iterator to the beginning of the container for the mobile species.
+	 * imm: an iterator to the beginning of the container for the immobile species.*/
+	template<typename ITM, typename ITIMM>
+	sp_scalar Rate(ITM m, ITIMM imm) const {
+		//1) Get values of participants (this->GetValues)
+		//2) Call RateImpl of the underlying kinetic reaction.
+		return this->Reaction().RateImpl(this->GetValues(m,imm));
+	}
+
+	/* DiffRate: the derivative of Rate with respect to each participant.
+	 * Parameters: see Rate. */
 	template<typename ITV>
 	std::vector<sp_scalar> DiffRate(ITV v) const { return this->Reaction().DiffRateImpl(this->GetValues(v)); }
 	template<typename ITM, typename ITIMM>

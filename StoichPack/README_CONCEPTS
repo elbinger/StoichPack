@@ -1,0 +1,34 @@
+The key components/concepts of StoichPack are:
+
+The EXT class:
+Since StoichPack is intended to be used within an existing FE-solver, it will reuse the linear algebra functionality of the
+respective solver. This avoids unnecessary copy operations and assures flexibility at the same time. The EXT class is implemented
+by the developer, and makes basic functionality - e.g. matrix-vector product - as well as STL-style iterator access to linear
+algebra structures available for StoichPack. EXT is always passed as template parameter.
+
+Reactions:
+All reactions in a biochemical systems have to inherit from a common interface. The default interface is the class
+IKineticReaction. Since the interface type is passed as template parameter, this may also be changed by the developer.
+The task of a reaction class is to provide the stoichiometric coefficients of its participants (i.e. biochemical species that
+influence the reaction rate and/or are produced or consumed by the reaction), and the reaction rate and its derivative given
+the concentrations of its participants. An optional task of a reaction class is to define dependencies of species to enable a
+certain type of preprocessing.
+
+Reaction Containers:
+The major tasks of containers are passing the correct values to reaction classes and combining the information of all reactions
+to the desired information for the right-hand sides in the original problem.
+We distinguish two types of containers: the BasicKineticContainer and hierarchical containers.
+The BasicKineticContainer contains an implementation of a biochemical system in its original form while hierarchical containers
+contain an equivalent biochemical system, i.e. they take another container as argument and modify its data in order to
+construct a problem equivalent to the original problem that can be solved faster. This is done only once at the
+beginning of the program and is therefore called preprocessing. Two types of preprocessing are implemented in StoichPack:
+the scheme presented in [1] (ReducedKineticContainer) and a scheme that exploits one sided couplings (OneSidedCouplings).
+
+Stages:
+Preprocessing divides the original problem into subproblems of smaller size, we call those subproblems stages.
+Stages fulfill the following properties: stage i can be be solved independently of stage j>i and there is
+a bijective mapping between the solutions of all stages and the solution of the original problem.
+
+[1]: S. Kräutle, P. Knabner: A new numerical reduction scheme for fully coupled multicomponent transport-reaction problems in porous media.
+WRR 2005, DOI: 10.1029/2004WR003624
+

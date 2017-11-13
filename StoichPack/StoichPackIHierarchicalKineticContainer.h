@@ -6,7 +6,6 @@
 #define __H_STOICHPACK_HIERARCHICAL_KINETIC_CONTAINER__
 
 #include "StoichPackIKineticContainer.h"
-#include <memory>
 
 namespace StoichPack{
 

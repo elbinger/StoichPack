@@ -1,0 +1,54 @@
+This directory contains the implementation of the StoichPack libraray:
+
+Files:
+
+* Explanations:
+
+  - README_CONCEPTS: a short introduction to the basic concepts of StoichPack, probably the first file you should read.
+
+* Basic files:
+
+  - StoichPackDefines.h: some definitions for StoichPack, you can change this if you want to.
+
+  - StoichPackMultiType: classes containing 2 or 4 variable of the same type.
+ 
+  - StoichPackUtility.h: some functions needed in several parts of StoichPack
+                         (dependencies: StoichPackDefines.h, StoichPackMultiType.h).
+
+  - StoichPack.h: include full library (dependencies: all headers in this directory).
+
+* Description of biochemical systems:
+
+  - StoichPackSpecies.h: storage structres and functions for biochemical species (dependencies: StoichPackDefines.h).
+
+  - StoichPackIReaction.h: default reaction interfaces (dependencies: StoichPackSpecies.h).
+
+  - StoichPackIKineticReaction.h: default interfaces for kinetic reactions (dependencies: StoichPackIReaction.h).
+
+  - StoichPackBiochemicalSystem.h: description of a biochemical system (dependencies on StoichPackIKineticReaction.h)
+
+* Stages (see README_CONCEPTS):
+
+  - StoichPackStageInfo.h: Basic information about stages (dependencies: StoichPackUtility.h).
+
+* Reaction containers:
+
+  - StoichPackIKineticContainer.h: Interface for all reaction containers
+                                   (dependencies: StoichPackStageInfo.h, StoichPackSpecies.h).
+
+  - StoichPackBasicKineticContainer.h: Implementation of a biochemical system without preprocessing
+                                       (dependencies: StoichPackIKineticContainer.h, StoichPackBiochemicalSystem.h).
+
+  - StoichPackIHierarchicalKineticContainer.h: Interface for hierarchical containers (dependencies: StoichPackIKineticContainer.h)
+
+  - StoichPackOneSidedCouplings.h: preprocessing scheme using one sided couplings (dependencies: StoichPackIHierarchicalKineticContainer.h)
+
+  - StoichPackReducedKineticContainer.h: preprocessing scheme using linear combinations of species as in [1]
+                                         (dependencies: on StoichPackIHierarchicalContainer.h).
+
+
+
+
+[1]: S. Kräutle, P. Knabner: A new numerical reduction scheme for fully coupled multicomponent transport-reaction problems in porous media.
+WRR 2005, DOI: 10.1029/2004WR003624
+

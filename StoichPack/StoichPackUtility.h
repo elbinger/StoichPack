@@ -109,7 +109,7 @@ namespace StoichPack{
 	return ret;
  }
 
- /* Get a matrix that consists of the columns of M specified in I. */
+ /* Returns a matrix that consists of the columns of M specified in I. */
  template<typename EXT>
  typename EXT::MatrixType SubCols(const typename EXT::MatrixType& M, const std::vector<size_t>& I){
 	const size_t s = I.size();
@@ -121,6 +121,7 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* Returns a matrix that consists of the rows of specified in I. */
  template<typename EXT>
  typename EXT::MatrixType SubRows(const typename EXT::MatrixType& M, const std::vector<size_t>& I){
 	const size_t s = I.size();
@@ -132,7 +133,7 @@ namespace StoichPack{
 	return ret;
  }
 
- /* Get a vector that consists of the entries of x specified in I. */
+ /* Returns a vector that consists of the entries of x specified in I. */
  template<typename EXT>
  typename EXT::VectorType SubEntries(const typename EXT::VectorType& x, const std::vector<size_t>& I){
 	const size_t s=I.size();
@@ -147,7 +148,7 @@ namespace StoichPack{
 	return ret;
  }
 
- /* Get a matrix that speciefies if a entry of M is nonzero, i.e.:
+ /* Returns a matrix that speciefies if a entry of M is nonzero, i.e.:
   * result(i,j)=1 <--> M(i,j)!=0
   * result(i,j)=0 <--> M(i,j)=0 */
  template<typename EXT>
@@ -170,6 +171,7 @@ namespace StoichPack{
 	return ret;
  }
 
+ //Concatenates the matrices in [begin,end) columnwise
  template<typename EXT, typename IT>
  typename EXT::MatrixType ColCat(IT begin, IT end){
 	assert(begin!=end);
@@ -177,6 +179,7 @@ namespace StoichPack{
 	else return CombineCols<EXT>(*begin,ColCat<EXT,IT>(begin+1,end));
  }
 
+ //Concatenates the matrices in [begin,end) rowwise
  template<typename EXT, typename IT>
  typename EXT::MatrixType RowCat(IT begin, IT end){
 	assert(begin!=end);
@@ -184,12 +187,15 @@ namespace StoichPack{
 	else return CombineRows<EXT>(*begin,RowCat<EXT,IT>(begin+1,end));
  }
 
+ //Returns the 2 diagonal subblocks of M, where the first subblock is of dimension rows x cols.
  template<typename EXT>
  MatrixPair<EXT> SplitBlocks(const typename EXT::MatrixType& M, size_t rows, size_t cols){
 	const MatrixPair<EXT> tmp = DivideCols<EXT>(M,cols);
 	return MatrixPair<EXT>(DivideRows<EXT>(tmp.Mobile(),rows).Mobile(),DivideRows<EXT>(tmp.Immobile(),rows).Immobile());
  }
 
+ /*                    [ M11  0  ]
+  * Returns the matrix [  0  M22 ] .*/
  template<typename EXT>
  typename EXT::MatrixType CombineBlocks(const typename EXT::MatrixType M11, const typename EXT::MatrixType M22) {
 	const typename EXT::MatrixType M12 = EXT::CreateMatrix(EXT::rows(M11),EXT::cols(M22),0);

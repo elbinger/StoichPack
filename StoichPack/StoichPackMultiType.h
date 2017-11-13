@@ -1,3 +1,7 @@
+/* File: StoichMultiType.h
+ * Purpose: Provide classes for storing 2 or 4 variables of same type.
+ * Author: Tobias Elbinger <elbinger@math.fau.de> */
+
 #ifndef __H_STOICHPACK_MULTITYPE__
 #define __H_STOICHPACK_MULTITYPE__
 
@@ -17,6 +21,7 @@ namespace StoichPack{
 	const T& Immobile() const { return immobile; }
  };
 
+ //a quadrupel
  template<typename T>
  class Quad : public Pair< Pair<T> >{
  public:

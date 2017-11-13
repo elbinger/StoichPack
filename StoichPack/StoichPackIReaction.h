@@ -6,8 +6,6 @@
 #define __H_STOICHPACK_REACTION__
 
 #include "StoichPackSpecies.h"
-#include <vector>
-#include <algorithm>
 #include <memory>
 
 namespace StoichPack{
