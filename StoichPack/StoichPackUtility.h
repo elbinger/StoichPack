@@ -171,6 +171,7 @@ namespace StoichPack{
 	return ret;
  }
 
+ /* //not needed in this version
  //Concatenates the matrices in [begin,end) columnwise
  template<typename EXT, typename IT>
  typename EXT::MatrixType ColCat(IT begin, IT end){
@@ -185,7 +186,7 @@ namespace StoichPack{
 	assert(begin!=end);
 	if(begin+1==end) return *begin;
 	else return CombineRows<EXT>(*begin,RowCat<EXT,IT>(begin+1,end));
- }
+ }*/
 
  //Returns the 2 diagonal subblocks of M, where the first subblock is of dimension rows x cols.
  template<typename EXT>

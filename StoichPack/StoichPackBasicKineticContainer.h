@@ -9,6 +9,8 @@
 #include "StoichPackBiochemicalSystem.h"
 
 namespace StoichPack{
+
+ //Implementation of a biochemical system without preprocessing.
  template<typename EXT, typename KineticType = IKineticReaction>
  class BasicKineticContainer : public IKineticContainer<EXT>{
  typedef InitializedBiochemicalSystem<KineticType> BiochemistryType;
@@ -17,232 +19,151 @@ namespace StoichPack{
  typedef typename EXT::MatrixType MatrixType;
 
  private:
-	const BiochemistryType problem;
-	BasicKineticContainer();
+	const BiochemistryType problem; //underlying biochemical problem
+	BasicKineticContainer(); //FORBID
 
+	// return StageInfoArray for system (needed for the constructor of IKineticContainer)
 	static StageInfoArray<EXT> Init(const BiochemicalSystem<KineticType>& system){
 		BiochemistryType problem(system);
-		//assemble stoichiometric matrix
-		const std::vector<KineticReactionType>& r=problem.KineticReactions();
-		const size_t n = problem.Count(species_type::mobile)+problem.Count(species_type::immobile);
-		MatrixType stoich = EXT::CreateMatrix(n,r.size(),0);
-		for(size_t i=0;i<r.size();++i){
-			r[i].Add(EXT::BeginColWise(stoich,i),r[i].Coefficients());
-		}
-		//assemble toBase / fromBase (identity)
-		MatrixType identity = Diag<EXT>(std::vector<sp_scalar>(n,1.));
 
-		const size_t nmob = problem.Count(species_type::mobile);
-		const std::vector<BasicStageInfo<EXT> > tmp(1, BasicStageInfo<EXT>(stoich,identity,identity,nmob,nmob,true));
+		//assemble stoichiometric matrix
+		 const std::vector<KineticReactionType>& r=problem.KineticReactions();
+		 const size_t n = problem.Count(species_type::mobile)+problem.Count(species_type::immobile); //number of species
+		 MatrixType stoich = EXT::CreateMatrix(n,r.size(),0);
+
+		 //iterate over all reactions and set the corresponding values
+		 for(size_t i=0;i<r.size();++i){
+		 	r[i].Add(EXT::BeginColWise(stoich,i),r[i].Coefficients());
+		 }
+
+		//assemble toBase / fromBase (=identity)
+		const MatrixType identity = Diag<EXT>(std::vector<sp_scalar>(n,1.));
+
+		const size_t nmob = problem.Count(species_type::mobile); // number of mobile species
+
+		const std::vector<BasicStageInfo<EXT> > tmp(1, BasicStageInfo<EXT>(stoich,identity,identity,nmob,nmob/*,true*/));
 		return StageInfoArray<EXT>(tmp);
 	}
 
-	template<typename OP, typename INDEX>
-	typename OP::ReturnType ReactionLoop(OP& op, const INDEX& index) const {
-		const size_t s=index.size();
-		const std::vector<KineticReactionType>& r=this->problem.KineticReactions();
-		for(size_t i=0;i<s;++i,++op){
-			assert(index[i]<r.size());
-			op.apply(r[index[i]]);
+	// helper class: all reactions
+	class FullIndex{
+	 private:
+		const size_t n;
+		FullIndex();
+	 public:
+		FullIndex(size_t s) : n(s) {}
+		size_t size() const { return n; }
+		size_t operator[](size_t i) const { return i; }
+	};
+
+	//Evaluate the reaction rates of all reactions specified in I. all contains the concentration values of all species.
+	template<class IType>
+	VectorType RRates(const VectorType& all, const IType& I) const {
+		const size_t nr = I.size(); //number of reactions
+		VectorType result = EXT::CreateVector(nr);
+		auto it = EXT::Begin(result); //iterator over the entries of ret
+		for(size_t i=0;i<nr;++i, ++it){
+			//evaluate rate
+			*it = problem.KineticReactions()[I[i]].Rate(EXT::ConstBegin(all));
 		}
-		return op.result;
+		return result;
 	}
 
-	class FullIndex{
-	 public:
-	 const size_t s;
-	 FullIndex(size_t si) : s(si) {}
-	 size_t size() const { return s; }
-	 size_t operator[](size_t i) const { return i; }
-	};
-	class Impl1RateOp{
-	 public:
-	 typedef typename EXT::VectorType& ReturnType;
-	 const typename EXT::ConstVectorIteratorType data;
-	 ReturnType result;
-	 typename EXT::VectorIteratorType it;
-	 Impl1RateOp(const typename EXT::VectorType& all, ReturnType res)
-	             : data(EXT::ConstBegin(all)), result(res), it(EXT::Begin(res)) {}
-	 void apply(const KineticReactionType& r){ *it = r.Rate(data); }
-	 Impl1RateOp& operator++() { ++it; return *this; }
-	};
-	class Impl2RateOp{
-	 public:
-	 typedef typename EXT::VectorType& ReturnType;
-	 const typename EXT::ConstVectorIteratorType data1;
-	 const typename EXT::ConstVectorIteratorType data2;
-	 ReturnType result;
-	 typename EXT::VectorIteratorType it;
-	 Impl2RateOp(const VectorType& mobile, const VectorType& immobile, ReturnType res)
-	             : data1(EXT::ConstBegin(mobile)), data2(EXT::ConstBegin(immobile)), result(res),
-	               it (EXT::Begin(res)) {}
-	 void apply(const KineticReactionType& r){ *it = r.Rate(data1,data2); }
-	 Impl2RateOp& operator++() { ++it; return *this; }
-	};
-	class Impl1DiffRateOp{
-	 public:
-	 typedef typename EXT::MatrixType ReturnType;
-	 const typename EXT::ConstVectorIteratorType data;
-	 ReturnType result;
-	 size_t row;
-	 Impl1DiffRateOp(const typename EXT::VectorType& all, size_t rows, size_t cols)
-	                 : data(EXT::ConstBegin(all)), result(EXT::CreateMatrix(rows,cols,0)), row(0) {
-	 }
-	 void apply(const KineticReactionType& r){
-		r.Add(EXT::BeginRowWise(result,row),r.DiffRate(data));
-	 }
-	 Impl1DiffRateOp& operator++() { ++row; return *this; }
-	};
-	class Impl2DiffRateOp{
-	 public:
-	 typedef MatrixPair<EXT> ReturnType;
-	 const typename EXT::ConstVectorIteratorType data1;
-	 const typename EXT::ConstVectorIteratorType data2;
-	 ReturnType result;
-	 size_t row;
-	 Impl2DiffRateOp(const VectorType& mobile, const VectorType& immobile, size_t rows, size_t cols1, size_t cols2)
-	                 : data1(EXT::ConstBegin(mobile)), data2(EXT::ConstBegin(immobile)),
-	                   result(EXT::CreateMatrix(rows,cols1,0),EXT::CreateMatrix(rows,cols2,0)), row(0) {
-	 }
-	 void apply(const KineticReactionType& r){
-		r.Add(EXT::BeginRowWise(result.Mobile(),row),EXT::BeginRowWise(result.Immobile(),row),r.DiffRate(data1,data2));
-	 }
-	 Impl2DiffRateOp& operator++() { ++row; return *this; }
-	};
-	class StructureOp{
-	 public:
-	 typedef typename EXT::MatrixType ReturnType;
-	 ReturnType result;
-	 size_t row;
-	 StructureOp(size_t rows, size_t cols)
-	                 : result(EXT::CreateMatrix(rows,cols,0)), row(0) {
-	 }
-	 void apply(const KineticReactionType& r){
-		r.Add(EXT::BeginRowWise(result,row),r.Dependencies());
-	 }
-	 StructureOp& operator++() { ++row; return *this; }
-	};
+	//Evaluate the reaction rates of all reactions specified in I. mobile contains the concentration values of the mobile species,
+	//immobile contains the concentration values of the immobile species.
+	template<class IType>	
+	VectorType RRates(const VectorType& mobile, const VectorType& immobile, const IType& I) const {
+		const size_t nr = I.size(); //number of reactions
+		VectorType ret = EXT::CreateVector(nr);
+		auto it = EXT::Begin(ret);
+		for(size_t i=0;i<nr;++i, ++it){
+			//evaluate rate
+			*it = problem.KineticReactions()[I[i]].Rate(EXT::ConstBegin(mobile),EXT::ConstBegin(immobile));
+		}
+		return ret;
+	}
+
+	/* DiffRRates: Jacobians of RRates */
+
+	template<class IType>
+	MatrixType DiffRRates(const VectorType& all, const IType& I) const {
+		const size_t nr = I.size();
+		MatrixType result = EXT::CreateMatrix(nr,EXT::size(all),0); //initialize with 0, since we use additive write
+		for(size_t i=0;i<nr;++i) {
+			const KineticReactionType& r = problem.KineticReactions()[I[i]];
+			//r.Add will take care about writing the entries to the correct column
+			//r.DiffRate is just a local derivative evaluation
+			r.Add(EXT::BeginRowWise(result,i),r.DiffRate(EXT::ConstBegin(all)));
+		}
+		return result;
+	}
+
+	template<class IType>
+	MatrixPair<EXT> DiffRRates(const VectorType& mobile, const VectorType& immobile, const IType& I) const {
+		const size_t nr = I.size();
+		//initialize with 0, since we use additive write
+		MatrixPair<EXT> result(EXT::CreateMatrix(nr,EXT::size(mobile),0),EXT::CreateMatrix(nr,EXT::size(immobile),0));
+		for(size_t i=0;i<nr;++i) {
+			const KineticReactionType& r = problem.KineticReactions()[I[i]];
+			//r.Add will take care about writing the entries to the correct column
+			//r.DiffRate is just a local derivative evaluation
+			r.Add(EXT::BeginRowWise(result.Mobile(),i),EXT::BeginRowWise(result.Immobile(),i),
+			      r.DiffRate(EXT::ConstBegin(mobile),EXT::ConstBegin(immobile)));
+		}
+		return result;
+	}
 
  public:
 	BasicKineticContainer(const BiochemicalSystem<KineticType>& system) : IKineticContainer<EXT>(Init(system)), problem(system) {}
 
 	const BiochemistryType& Problem() const { return problem; }
 
-	//interface
+	/* functions inherited from interface */
 	VectorType ReactionRatesImpl(const VectorType& all, size_t stage) const {
-		VectorType ret =EXT::CreateVector(problem.KineticReactions().size());
-		Impl1RateOp tmp(all,ret);
-		ReactionLoop(tmp,FullIndex(problem.KineticReactions().size()));
-		return ret;
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= r.size();
-		VectorType ret = EXT::CreateVector(s);
-		typename EXT::VectorIteratorType it = EXT::Begin(ret);
-		const typename EXT::ConstVectorIteratorType data = EXT::ConstBegin(all);
-		for(size_t i=0;i<s;++i, ++it){
-			*it = r[i].Rate(data);
-		}
-		return ret;*/
+		assert(stage==0);
+		FullIndex I(problem.KineticReactions().size()); // all reactions
+		return RRates(all,I);
 	}
 
 	VectorType ReactionRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
-		VectorType ret = EXT::CreateVector(problem.KineticReactions().size());
-		Impl2RateOp tmp(mobile,immobile,ret);
-		ReactionLoop(tmp,FullIndex(problem.KineticReactions().size()));
-		return ret;
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= r.size();
-		VectorType ret = EXT::CreateVector(s);
-		typename EXT::VectorIteratorType it = EXT::Begin(ret);
-		const typename EXT::ConstVectorIteratorType data1 = EXT::ConstBegin(all.Mobile());
-		const typename EXT::ConstVectorIteratorType data2 = EXT::ConstBegin(all.Immobile());
-		for(size_t i=0;i<s;++i, ++it){
-			*it = r[i].Rate(data1,data2);
-		}
-		return ret;*/
+		assert(stage==0);
+		FullIndex I(problem.KineticReactions().size()); // all reactions
+		return RRates(mobile,immobile,I);
 	}
 
 
 	VectorType SubReactionRatesImpl(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
-		VectorType ret = EXT::CreateVector(I.size());
-		Impl1RateOp tmp(all,ret);
-		ReactionLoop(tmp,I);
-		return ret;
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= I.size();
-		VectorType ret = EXT::CreateVector(s);
-		typename EXT::VectorIteratorType it = EXT::Begin(ret);
-		const typename EXT::ConstVectorIteratorType data = EXT::ConstBegin(all);
-		for(size_t i=0;i<s;++i, ++it){
-			assert(I[i]<r.size());
-			*it = r[I[i]]->Rate(data);
-		}
-		return ret;*/
+		assert(stage==0);
+		return RRates(all,I);
 	}
 
-	VectorType SubReactionRatesImpl(const VectorType& mobile, const VectorType& immobile, const std::vector<size_t>& I, size_t stage) const {
-		VectorType ret = EXT::CreateVector(I.size());
-		Impl2RateOp tmp(mobile,immobile,ret);
-		ReactionLoop(tmp,I);
-		return ret;
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= I.size();
-		VectorType ret = EXT::CreateVector(s);
-		typename EXT::VectorIteratorType it = EXT::Begin(ret);
-		const typename EXT::ConstVectorIteratorType data1 = EXT::ConstBegin(all.Mobile());
-		const typename EXT::ConstVectorIteratorType data2 = EXT::ConstBegin(all.Immobile());
-		for(size_t i=0;i<s;++i, ++it){
-			assert(I[i]<r.size());
-			*it = r[I[i]]->Rate(data1,data2);
-		}
-		return ret;*/
+	VectorType SubReactionRatesImpl(const VectorType& mobile, const VectorType& immobile,
+	                                const std::vector<size_t>& I, size_t stage) const {
+		assert(stage==0);
+		return RRates(mobile,immobile,I);
 	}
 	
 	MatrixType DiffReactionRatesImpl(const VectorType& all, size_t stage) const {
-		const size_t s = problem.KineticReactions().size();
-		Impl1DiffRateOp tmp(all,s,this->GlobalSpecies());
-		return ReactionLoop(tmp,FullIndex(s));
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= r.size();
-		MatrixType ret = EXT::CreateMatrix(s,this->GlobalSpecies(),0);
-		const typename EXT::ConstVectorIteratorType data = EXT::ConstBegin(all);
-		for(size_t i=0;i<s;++i){
-			r[i].Add(EXT::BeginRowWise(ret,i),r[i].DiffRate(data));
-		}
-		return ret;*/
+		assert(stage==0);
+		FullIndex I(problem.KineticReactions().size()); // all reactions
+		return DiffRRates(all,I);
 	}
 
 	MatrixPair<EXT> DiffReactionRatesImpl(const VectorType& mobile, const VectorType& immobile, size_t stage) const {
-		const size_t s = problem.KineticReactions().size();
-		Impl2DiffRateOp tmp(mobile,immobile,s,this->MobileSpecies(),this->ImmobileSpecies());
-		return ReactionLoop(tmp,FullIndex(s));
-		/*assert(this->CheckSize(all,stage));
-		const std::vector<SHARED_RPTR>& r=problem.KineticReactions();
-		const size_t s= r.size();
-		MatrixPair<EXT> ret(EXT::CreateMatrix(s,this->MobileSpecies(),0),EXT::CreateMatrix(s,this->ImmobileSpecies(),0));
-		const typename EXT::ConstVectorIteratorType data1 = EXT::ConstBegin(all.Mobile());
-		const typename EXT::ConstVectorIteratorType data2 = EXT::ConstBegin(all.Immobile());
-
-		for(size_t i=0;i<s;++i){
-			r[i].Add(EXT::BeginRowWise(ret.Mobile(),i),EXT::BeginRowWise(ret.Immobile(),i),r[i].DiffRate(data1,data2));
-		}
-		return ret;*/
+		assert(stage==0);
+		FullIndex I(problem.KineticReactions().size()); // all reactions
+		return DiffRRates(mobile,immobile,I);
 	}
 
 	MatrixType DiffSubReactionRatesImpl(const VectorType& all, const std::vector<size_t>& I, size_t stage) const {
-		Impl1DiffRateOp tmp(all,I.size(),this->GlobalSpecies());
-		return ReactionLoop(tmp,I);
+		assert(stage==0);
+		return DiffRRates(all,I);
 	}
 
 	MatrixPair<EXT> DiffSubReactionRatesImpl(const VectorType& mobile, const VectorType& immobile,
 	                                         const std::vector<size_t>& I, size_t stage) const {
-		Impl2DiffRateOp tmp(mobile,immobile,I.size(),this->MobileSpecies(),this->ImmobileSpecies());
-		return ReactionLoop(tmp,I);
+		assert(stage==0);
+		return DiffRRates(mobile,immobile,I);
 	}
 
 	VectorType ConstSpeciesRatesImpl(const VectorType& all, size_t stage) const {
@@ -256,29 +177,22 @@ namespace StoichPack{
 
 	const std::vector<InitializedSpecies>& Participants() const { return problem.Participants(); }
 
-	MatrixType RateStructure(size_t stage, const std::vector<size_t>& I) const {
-		assert(stage==0);
-		StructureOp tmp(problem.KineticReactions().size(),Participants().size());
-		return ReactionLoop(tmp,I);
-	}
 	MatrixType RateStructure(size_t stage) const {
-		assert(stage==0);
-		StructureOp tmp(problem.KineticReactions().size(),Participants().size());
-		return ReactionLoop(tmp,FullIndex(problem.KineticReactions().size()));
+		const size_t nr = problem.KineticReactions().size();
+		MatrixType result = EXT::CreateMatrix(nr,this->GlobalSpecies(),0);
+		for(size_t i=0;i<nr;++i) {
+			//r.Add will take care about writing the entries to the correct column
+			//r.Dependencies is just a local structure evaluation
+			const KineticReactionType& r = problem.KineticReactions()[i];
+			r.Add(EXT::BeginRowWise(result,i),r.Dependencies());
+		}
+		return result;
 	}		
-
-	MatrixType SpeciesStructure(size_t stage) const {
-		StructureOp tmp(problem.KineticReactions().size(),Participants().size());
-		return BooleanMatrix<EXT>(this->StoichiometricMatrices()[0])*RateStructure(0);
-	}
-
-	MatrixType MobileTransformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->MobileSpecies(),1)); }
-	MatrixType ImmobileTransformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->ImmobileSpecies(),1)); }
-	MatrixType Transformation() const { return Diag<EXT>(std::vector<sp_scalar>(this->GlobalSpecies(),1)); }
 
 	IKineticContainer<EXT>* copy() const { return new BasicKineticContainer(*this); }
  };
 
+ //ensure compatibility for old naming convention
  template<typename EXT>
  using BasicKineticStoichiometry = BasicKineticContainer<EXT>;
 } // namespace StoichPack

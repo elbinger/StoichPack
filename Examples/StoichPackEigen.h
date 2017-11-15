@@ -162,14 +162,13 @@ public:
 };
 
 /* Part 3: the EXT class
- * This class will be passed as template parameter to StoichPack classes. Has functions and typedefs with the same name and semantics
- * as this example class.
+ * This class will be passed as template parameter to StoichPack classes.
+ * Make sure, that your implementation has the same functions, typedefs
+ * and semantics as this example class.
  */			
 class EXT{
 public:
 	typedef Matrix<sp_scalar,Dynamic,1> VectorType; // (algebraic) vectors are stored like this
-	typedef EigenIterator<VectorType,false> VectorIteratorType; // iterator type for vectors
-	typedef EigenConstIterator<VectorType,false> ConstVectorIteratorType; // const iterator type for vectors
 
 	static VectorType CreateVector(size_t s) { return VectorType(s); } //Create a (algebraic) vector of dimension s
 	static VectorType CreateVector(size_t s, sp_scalar v) // Create vector of dimension s with all entries initialized as v
@@ -177,14 +176,14 @@ public:
 
 	static size_t size(const VectorType& x) { return x.rows(); } //dimension of a vector
 
-	static VectorIteratorType Begin(VectorType& x) //iterator to the first entry of a vector
-		{ return VectorIteratorType(x,EigenIteratorPos(0,0)); }
-	static VectorIteratorType End(VectorType& x) //iterator to the past-end entry of a vector
-		{ return VectorIteratorType(x,EigenIteratorPos(0,EXT::size(x))); }
-	static ConstVectorIteratorType ConstBegin(const VectorType& x) //const iterator to the first entry of a vector
-		{ return ConstVectorIteratorType(x,EigenIteratorPos(0,0)); }
-	static ConstVectorIteratorType ConstEnd(const VectorType& x) //const iterator to the past-end entry of a vector
-		{ return ConstVectorIteratorType(x,EigenIteratorPos(0,size(x))); }
+	static EigenIterator<VectorType,false> Begin(VectorType& x) //iterator to the first entry of a vector
+		{ return EigenIterator<VectorType,false>(x,EigenIteratorPos(0,0)); }
+	static EigenIterator<VectorType,false> End(VectorType& x) //iterator to the past-end entry of a vector
+		{ return EigenIterator<VectorType,false>(x,EigenIteratorPos(0,EXT::size(x))); }
+	static EigenConstIterator<VectorType,false> ConstBegin(const VectorType& x) //const iterator to the first entry of a vector
+		{ return EigenConstIterator<VectorType,false>(x,EigenIteratorPos(0,0)); }
+	static EigenConstIterator<VectorType,false> ConstEnd(const VectorType& x) //const iterator to the past-end entry of a vector
+		{ return EigenConstIterator<VectorType,false>(x,EigenIteratorPos(0,size(x))); }
 
 	// arrays of (algebraic) vectors. Matrices are not suitable, since each vector may have different dimension.
 	typedef std::vector<VectorType> VectorArrayType;
@@ -222,8 +221,7 @@ public:
 
 	typedef Matrix<sp_scalar,Dynamic,Dynamic> MatrixType; //matrices are stored like this
 
-	/* In contrast to vectors, we do not need a matrix array class. We still need iterators for matrices, but in contrast to vectors,
-	 * the iterator types do not need to be specified via typedef (in this case, auto deduction is possible). */
+	/* In contrast to vectors, we do not need a matrix array class. */
 
 	static size_t rows(const MatrixType& A) { return A.rows(); } //number of rows
 	static size_t cols(const MatrixType& A) { return A.cols(); } //number of columns
